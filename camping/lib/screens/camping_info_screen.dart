@@ -27,13 +27,18 @@ class CampingInfoScreen extends StatelessWidget {
                   children: [
                     Icon(Icons.star_border),
                     SizedBox(height: 8),
-                    Icon(Icons.content_copy),
+                    // content_copy 아이콘을 IconButton으로 변경하여 '/memo'로 이동
+                    IconButton(
+                      icon: Icon(Icons.content_copy),
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/memo');
+                      },
+                    ),
                   ],
                 ),
               ],
             ),
             SizedBox(height: 16),
-
             // 예약 현황 버튼
             ElevatedButton(
               onPressed: () {
@@ -46,11 +51,9 @@ class CampingInfoScreen extends StatelessWidget {
                 backgroundColor: Colors.green,
               ),
             ),
-
             SizedBox(height: 24),
             Text('사진', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 12),
-
             // 사진 영역
             Row(
               children: [
@@ -77,10 +80,12 @@ class CampingInfoScreen extends StatelessWidget {
                 ),
               ],
             ),
-
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                // 후기 작성 버튼 누르면 review 화면으로 이동
+                Navigator.pushNamed(context, '/review');
+              },
               child: Text('후기 작성'),
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
@@ -88,11 +93,9 @@ class CampingInfoScreen extends StatelessWidget {
                 minimumSize: Size(double.infinity, 40),
               ),
             ),
-
             SizedBox(height: 24),
             Text('후기', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 12),
-
             // 후기 리스트 예시
             _buildReview(
               name: '익명',
