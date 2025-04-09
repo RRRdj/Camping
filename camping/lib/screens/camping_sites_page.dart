@@ -1,10 +1,80 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:xml/xml.dart' as xml;
 
-class CampingSitesPage extends StatelessWidget {
+class CampingSitesPage extends StatefulWidget {
   const CampingSitesPage({Key? key}) : super(key: key);
 
   @override
+  _CampingSitesPageState createState() => _CampingSitesPageState();
+}
+
+class _CampingSitesPageState extends State<CampingSitesPage> {
+  // contentId별 이미지 URL을 저장할 맵
+  final Map<String, String> imageUrls = {};
+  bool isLoadingImages = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchImages();
+  }
+
+  /// contentId 362, 363, 364에 대해 API 호출하여 이미지 URL을 가져오는 함수
+  Future<void> fetchImages() async {
+    const List<String> contentIds = ['362', '363', '364'];
+    // 이미지 API에 사용할 URL 인코딩된 서비스키
+    const String serviceKey =
+        '0wd8kVe4L75w5XaOYAd9iM0nbI9lgSRJLIDVsN78hfbIauGBbgdIqrwWDC%2B%2F10qT4MMw6KSWAAlB6dXNuGEpLQ%3D%3D';
+
+    for (String id in contentIds) {
+      final url = Uri.parse(
+        'https://apis.data.go.kr/B551011/GoCamping/imageList'
+        '?numOfRows=1'
+        '&pageNo=1'
+        '&MobileOS=AND'
+        '&MobileApp=camping'
+        '&serviceKey=$serviceKey'
+        '&_type=XML'
+        '&contentId=$id',
+      );
+
+      try {
+        final response = await http.get(url);
+        if (response.statusCode == 200) {
+          final decodedBody = utf8.decode(response.bodyBytes);
+          final parsedXml = xml.XmlDocument.parse(decodedBody);
+          final imageElements = parsedXml.findAllElements('imageUrl');
+          if (imageElements.isNotEmpty) {
+            final imageUrl = imageElements.first.text;
+            setState(() {
+              imageUrls[id] = imageUrl;
+            });
+          } else {
+            setState(() {
+              imageUrls[id] = ''; // 이미지 URL이 없는 경우 빈 문자열 처리
+            });
+          }
+        } else {
+          setState(() {
+            imageUrls[id] = '';
+          });
+        }
+      } catch (e) {
+        setState(() {
+          imageUrls[id] = '';
+        });
+      }
+    }
+    setState(() {
+      isLoadingImages = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // 각 카드에 contentId 362, 363, 364에 해당하는 이미지를 사용
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -13,7 +83,6 @@ class CampingSitesPage extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () {
-            // 이전 페이지로 돌아가기
             Navigator.pop(context);
           },
         ),
@@ -30,7 +99,6 @@ class CampingSitesPage extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.home_outlined, color: Colors.black),
             onPressed: () {
-              // 홈(지역 선택 화면)으로 이동
               Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
             },
           ),
@@ -40,7 +108,10 @@ class CampingSitesPage extends StatelessWidget {
         children: [
           // Search Bar
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
             child: Container(
               height: 44,
               decoration: BoxDecoration(
@@ -54,10 +125,7 @@ class CampingSitesPage extends StatelessWidget {
                       padding: EdgeInsets.only(left: 16.0),
                       child: Text(
                         '구미',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontSize: 15,
-                        ),
+                        style: TextStyle(color: Colors.black54, fontSize: 15),
                       ),
                     ),
                   ),
@@ -66,7 +134,6 @@ class CampingSitesPage extends StatelessWidget {
                     child: IconButton(
                       icon: const Icon(Icons.search, color: Colors.black54),
                       onPressed: () {
-                        // 돋보기 버튼 => SearchResultPage 이동
                         Navigator.pushNamed(context, '/search_result');
                       },
                     ),
@@ -78,14 +145,20 @@ class CampingSitesPage extends StatelessWidget {
 
           // Filter Tags
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.grey.shade200),
               ),
-              padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+              padding: const EdgeInsets.symmetric(
+                vertical: 12.0,
+                horizontal: 10.0,
+              ),
               child: Row(
                 children: [
                   _buildFilterTag('지자체'),
@@ -102,14 +175,18 @@ class CampingSitesPage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: ListView(
                 children: [
-                  // 1) 구미 캠핑장
+                  // 1) 구미 캠핑장 (contentId: '362')
                   InkWell(
                     onTap: () {
-                      // 구미 캠핑장 클릭 => camping_info_screen.dart 이동
                       Navigator.pushNamed(context, '/camping_info');
                     },
                     child: _buildCampSiteCard(
-                      image: 'assets/images/camp1.jpg',
+                      image:
+                          isLoadingImages
+                              ? 'https://via.placeholder.com/75x56?text=Loading'
+                              : (imageUrls['362']?.isNotEmpty == true
+                                  ? imageUrls['362']!
+                                  : 'https://via.placeholder.com/75x56?text=No+Image'),
                       location: '경북 구미시',
                       stars: 180,
                       name: '구미 캠핑장',
@@ -118,10 +195,14 @@ class CampingSitesPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
-
-                  // 2) 소백산삼가야영장
+                  // 2) 소백산삼가야영장 (contentId: '363')
                   _buildCampSiteCard(
-                    image: 'assets/images/camp2.jpg',
+                    image:
+                        isLoadingImages
+                            ? 'https://via.placeholder.com/75x56?text=Loading'
+                            : (imageUrls['1718']?.isNotEmpty == true
+                                ? imageUrls['1718']!
+                                : 'https://via.placeholder.com/75x56?text=No+Image'),
                     location: '경북 영주시',
                     stars: 10,
                     name: '소백산삼가야영장',
@@ -129,10 +210,14 @@ class CampingSitesPage extends StatelessWidget {
                     isAvailable: false,
                   ),
                   const SizedBox(height: 10),
-
-                  // 3) 구미 금오산야영장
+                  // 3) 구미 금오산야영장 (contentId: '364')
                   _buildCampSiteCard(
-                    image: 'assets/images/camp3.jpg',
+                    image:
+                        isLoadingImages
+                            ? 'https://via.placeholder.com/75x56?text=Loading'
+                            : (imageUrls['480']?.isNotEmpty == true
+                                ? imageUrls['480']!
+                                : 'https://via.placeholder.com/75x56?text=No+Image'),
                     location: '경북 구미시',
                     stars: 60,
                     name: '구미 금오산야영장',
@@ -158,10 +243,7 @@ class CampingSitesPage extends StatelessWidget {
       ),
       child: Text(
         '#$text',
-        style: const TextStyle(
-          fontSize: 14,
-          color: Colors.black87,
-        ),
+        style: const TextStyle(fontSize: 14, color: Colors.black87),
       ),
     );
   }
@@ -183,21 +265,29 @@ class CampingSitesPage extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Camp Image
+          // 캠핑장 이미지를 네트워크 URL로 로딩 (API 결과 사용)
           Padding(
             padding: const EdgeInsets.all(10.0),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(4),
-              child: Image.asset(
+              child: Image.network(
                 image,
                 width: 75,
                 height: 56,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 75,
+                    height: 56,
+                    color: Colors.grey,
+                    child: const Icon(Icons.error, color: Colors.red),
+                  );
+                },
               ),
             ),
           ),
 
-          // Camp Info
+          // 캠핑장 정보
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,11 +302,7 @@ class CampingSitesPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    const Icon(
-                      Icons.star,
-                      color: Colors.amber,
-                      size: 12,
-                    ),
+                    const Icon(Icons.star, color: Colors.amber, size: 12),
                     Text(
                       ' $stars',
                       style: TextStyle(
@@ -246,12 +332,15 @@ class CampingSitesPage extends StatelessWidget {
             ),
           ),
 
-          // Availability Tag
+          // 예약 상태 태그
           if (hasAvailabilityTag)
             Padding(
               padding: const EdgeInsets.all(10.0),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(15),
@@ -259,9 +348,7 @@ class CampingSitesPage extends StatelessWidget {
                 ),
                 child: Text(
                   isAvailable ? '예약 가능' : '예약 마감',
-                  style: const TextStyle(
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(fontSize: 12),
                 ),
               ),
             ),

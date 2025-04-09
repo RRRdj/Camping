@@ -4,10 +4,7 @@ class CampingReservationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('구미 캠핑장'),
-        leading: BackButton(),
-      ),
+      appBar: AppBar(title: Text('구미 캠핑장'), leading: BackButton()),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
