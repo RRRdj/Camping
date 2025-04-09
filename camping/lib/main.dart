@@ -24,9 +24,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: '금오캠핑',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.teal,
-      ),
+      theme: ThemeData(primarySwatch: Colors.teal),
       // 초기 화면을 로그인 화면으로 설정
       initialRoute: '/login',
       routes: {
@@ -43,8 +41,6 @@ class MyApp extends StatelessWidget {
         '/memo': (context) => MemoScreen(),
         '/bookmark': (context) => BookmarksScreen(),
         '/myinfo': (context) => MyInfoScreen(),
-
-
       },
     );
   }
@@ -73,6 +69,7 @@ class _BottomNavPageState extends State<BottomNavPage> {
       _selectedIndex = index;
     });
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -82,10 +79,7 @@ class _BottomNavPageState extends State<BottomNavPage> {
         onTap: _onItemTapped,
         selectedItemColor: Colors.teal,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: '홈',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
           BottomNavigationBarItem(
             icon: Icon(Icons.bookmark_outline),
             label: '북마크',
