@@ -9,13 +9,13 @@ android {
     namespace = "com.example.camping"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
-    
-    compileSdk = 33
+
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.myapp"
         minSdk = 21
-        targetSdk = 33   // 여기서 targetSdkVersion이 아니라 targetSdk로 작성합니다.
+        targetSdk = 35   // 여기서 targetSdkVersion이 아니라 targetSdk로 작성합니다.
         versionCode = 1
         versionName = "1.0"
     }
