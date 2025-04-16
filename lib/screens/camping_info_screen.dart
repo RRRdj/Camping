@@ -2,9 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart' as xml;
+import 'package:url_launcher/url_launcher.dart'; // 추가: url_launcher 패키지
 import 'camping_reservation_screen.dart';
-// 만약 CampingReservationScreen이 다른 파일에 있다면 import 해주세요.
-// import 'camping_reservation_screen.dart';
 
 /// 캠핑장 정보를 담을 모델 클래스
 class CampingItem {
@@ -12,20 +11,26 @@ class CampingItem {
   final String facltNm;
   final String addr1;
   final String lineIntro;
-  final String sbrsEtc; // 부가시설 정보
+  final String sbrsCI; // 부가시설
   final String facltDivNm; // 캠핑장 구분
   final String homepage; // 홈페이지 주소
   final String tel; // 전화번호
+
+  // NEW: 새로 추가된 필드들
+  final String resveCl; // 예약 구분
+  final String animalCmgCl; // 동물 입장 가능 여부
 
   CampingItem({
     required this.contentId,
     required this.facltNm,
     required this.addr1,
     required this.lineIntro,
-    required this.sbrsEtc,
+    required this.sbrsCI,
     required this.facltDivNm,
     required this.homepage,
     required this.tel,
+    required this.resveCl, // NEW
+    required this.animalCmgCl, // NEW
   });
 }
 
@@ -101,10 +106,14 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
           final facltNm = node.getElement('facltNm')?.text.trim() ?? '';
           final addr1 = node.getElement('addr1')?.text.trim() ?? '';
           final lineIntro = node.getElement('lineIntro')?.text.trim() ?? '';
-          final sbrsEtc = node.getElement('sbrsEtc')?.text.trim() ?? '';
+          final sbrsCI = node.getElement('sbrsCI')?.text.trim() ?? '';
           final facltDivNm = node.getElement('facltDivNm')?.text.trim() ?? '';
           final homepage = node.getElement('homepage')?.text.trim() ?? '';
           final tel = node.getElement('tel')?.text.trim() ?? '';
+
+          // NEW: 추가로 <resveCl>와 <animalCmgCl>를 파싱
+          final resveCl = node.getElement('resveCl')?.text.trim() ?? '';
+          final animalCmgCl = node.getElement('animalCmgCl')?.text.trim() ?? '';
 
           setState(() {
             campingItem = CampingItem(
@@ -112,10 +121,12 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
               facltNm: facltNm,
               addr1: addr1,
               lineIntro: lineIntro,
-              sbrsEtc: sbrsEtc,
+              sbrsCI: sbrsCI,
               facltDivNm: facltDivNm,
               homepage: homepage,
               tel: tel,
+              resveCl: resveCl, // NEW
+              animalCmgCl: animalCmgCl, // NEW
             );
           });
         } else {
@@ -227,16 +238,46 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
       return const SizedBox.shrink();
     }
 
-    return Text(
-      '정보 \n\n'
-      '캠핑장 이름: ${campingItem!.facltNm}\n'
-      '주소: ${campingItem!.addr1}\n'
-      '한줄소개: ${campingItem!.lineIntro}\n'
-      '부가시설: ${campingItem!.sbrsEtc}\n'
-      '캠핑장 구분: ${campingItem!.facltDivNm}\n'
-      '홈페이지: ${campingItem!.homepage}\n'
-      '전화번호: ${campingItem!.tel}\n',
-      style: const TextStyle(fontSize: 16),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '정보\n\n'
+          // '캠핑장 이름: ${campingItem!.facltNm}\n' // 제거됨
+          '주소: ${campingItem!.addr1}\n'
+          '한줄소개: ${campingItem!.lineIntro}\n'
+          '부가시설: ${campingItem!.sbrsCI}\n'
+          '캠핑장 구분: ${campingItem!.facltDivNm}\n'
+          '전화번호: ${campingItem!.tel}\n'
+          // NEW: resveCl, animalCmgCl 추가
+          '예약 구분: ${campingItem!.resveCl}\n'
+          '반려동물 동반 가능 여부: ${campingItem!.animalCmgCl}\n',
+          style: const TextStyle(fontSize: 16),
+        ),
+        Row(
+          children: [
+            //const Text('홈페이지: ', style: TextStyle(fontSize: 16)),
+            ElevatedButton(
+              onPressed: () async {
+                final url = campingItem!.homepage;
+                final uri = Uri.tryParse(url);
+                if (uri != null && await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('홈페이지를 열 수 없습니다.')),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.green,
+              ),
+              child: const Text('홈페이지'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -266,7 +307,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 예약 현황 버튼 (onPressed 수정)
+            // 예약 현황 버튼
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
@@ -284,7 +325,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
             ),
             const SizedBox(height: 24),
             _buildCampingInfoText(),
-            // 사진 영역 (API로 받아온 이미지 표시)
             const Text(
               '사진',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -305,7 +345,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
               child: const Text('후기 작성'),
             ),
             const SizedBox(height: 24),
-            // 후기 리스트 영역
             const Text(
               '후기',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
