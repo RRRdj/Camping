@@ -16,6 +16,13 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     {'name': '치인'},
   ];
 
+  // ✅ 한국 시간 기준 내일 날짜 반환
+  String getTomorrowDateInKorea() {
+    final koreaNow = DateTime.now().toUtc().add(const Duration(hours: 9));
+    final tomorrow = koreaNow.add(const Duration(days: 1));
+    return DateFormat('yyyy-MM-dd').format(tomorrow);
+  }
+
   Future<Map<String, dynamic>?> fetchAvailability(String campName) async {
     final snapshot = await FirebaseFirestore.instance
         .collection('realtime_availability')
@@ -24,10 +31,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
 
     if (snapshot.exists) {
       final data = snapshot.data();
-
-      final koreaNow = DateTime.now().toUtc().add(const Duration(hours: 9));
-      final tomorrow = DateFormat('yyyy-MM-dd')
-          .format(koreaNow.add(const Duration(days: 1)));
+      final tomorrow = getTomorrowDateInKorea();
 
       print('📦 Firestore date: ${data?['date']}, Tomorrow: $tomorrow');
 
@@ -37,7 +41,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     }
     return null;
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -50,9 +53,28 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
           return FutureBuilder<Map<String, dynamic>?>(
             future: fetchAvailability(camp['name']),
             builder: (context, snapshot) {
-              final available = snapshot.data?['available'] ?? 0;
-              final total = snapshot.data?['total'] ?? 0;
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              if (snapshot.hasError) {
+                return ListTile(
+                  title: Text(camp['name']),
+                  subtitle: Text('에러 발생: ${snapshot.error}'),
+                );
+              }
+
+              if (!snapshot.hasData || snapshot.data == null) {
+                return _buildCampItem(camp, 0, 0, false); // 예약 마감 처리
+              }
+
+              final available = snapshot.data!['available'] ?? 0;
+              final total = snapshot.data!['total'] ?? 0;
               final isAvailable = available > 0;
+
               return _buildCampItem(camp, available, total, isAvailable);
             },
           );
