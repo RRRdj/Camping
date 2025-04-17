@@ -1,6 +1,6 @@
 import 'package:camping/screens/register_screen.dart';
 import 'package:flutter/material.dart';
-import 'screens/login_screen.dart'; // 로그인 화면 파일
+import 'screens/login_screen.dart';
 import 'screens/region_selection_screen.dart';
 import 'screens/detail_screen.dart';
 import 'screens/camping_info_screen.dart';
@@ -12,8 +12,14 @@ import 'screens/book_mark_screen.dart';
 import 'screens/my_info_screen.dart';
 import 'screens/memo_screen.dart';
 import 'screens/review_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform, // ✅ 이 부분 중요
+  );
   runApp(const MyApp());
 }
 
@@ -25,14 +31,12 @@ class MyApp extends StatelessWidget {
       title: '금오캠핑',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.teal),
-      // 초기 화면을 로그인 화면으로 설정
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
-        // 로그인 후 이동할 메인 화면 (BottomNavPage)
         '/': (context) => const BottomNavPage(),
         '/detail': (context) => DetailScreen(),
-        '/camping_info': (context) => CampingInfoScreen(),
+        '/camping_info': (context) => const CampingInfoScreen(),
         '/camping_reservation': (context) => CampingReservationScreen(),
         '/camping_sites_page': (context) => CampingSitesPage(),
         '/search_result': (context) => SearchResultPage(),
@@ -46,7 +50,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// Bottom Navigation 포함 페이지
 class BottomNavPage extends StatefulWidget {
   const BottomNavPage({Key? key}) : super(key: key);
 
@@ -57,7 +60,6 @@ class BottomNavPage extends StatefulWidget {
 class _BottomNavPageState extends State<BottomNavPage> {
   int _selectedIndex = 0;
 
-  // 각 탭에 해당하는 화면 리스트
   final List<Widget> _pages = const [
     CampingHomeScreen(),
     BookmarksScreen(),
@@ -80,14 +82,8 @@ class _BottomNavPageState extends State<BottomNavPage> {
         selectedItemColor: Colors.teal,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bookmark_outline),
-            label: '북마크',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: '내 정보',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.bookmark_outline), label: '북마크'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: '내 정보'),
         ],
       ),
     );

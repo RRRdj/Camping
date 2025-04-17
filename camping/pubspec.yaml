@@ -32,6 +32,9 @@ dependencies:
     sdk: flutter
     # HTTP 요청을 위한 패키지
   http: ^0.13.6
+  firebase_core: ^2.27.0
+  cloud_firestore: ^4.14.0
+  intl: ^0.18.1
 
     # XML 파싱을 위한 패키지
   xml: ^6.3.0

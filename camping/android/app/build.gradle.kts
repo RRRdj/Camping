@@ -3,10 +3,14 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services") // 🔹 Firebase 플러그인)
 }
-
+dependencies {
+    implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx") // Firestore용
+}
 android {
-    namespace = "com.example.camping"
+    namespace = "kr.ac.kumoh.camping"  // ✅ 여기에 추가
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
