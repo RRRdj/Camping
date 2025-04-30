@@ -225,8 +225,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     }
 
     return Text(
-      '정보 \n\n'
-      '캠핑장 이름: ${campingItem!.facltNm}\n'
       '주소: ${campingItem!.addr1}\n'
       '한줄소개: ${campingItem!.lineIntro}\n'
       '부가시설: ${campingItem!.sbrsEtc}\n'

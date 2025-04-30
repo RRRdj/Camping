@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'region_selection_screen.dart'; // RegionSelectionScreen이 정의된 파일을 import 합니다.
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -35,13 +34,15 @@ class LoginScreen extends StatelessWidget {
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () {
-                // 로그인 로직 추가
+                // 로그인 성공했다고 가정
+                Navigator.pushReplacementNamed(context, '/main');
               },
               child: const Text('로그인'),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 48),
               ),
             ),
+
             const SizedBox(height: 16),
             TextButton(
               onPressed: () {
@@ -51,16 +52,6 @@ class LoginScreen extends StatelessWidget {
               child: const Text('회원가입'),
             ),
             const SizedBox(height: 16),
-            // 아래 버튼을 눌러 바로 RegionSelectionScreen으로 이동할 수 있도록 추가
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => RegionSelectionScreen()),
-                );
-              },
-              child: const Text('바로 지역 선택 화면으로 이동'),
-            ),
           ],
         ),
       ),
