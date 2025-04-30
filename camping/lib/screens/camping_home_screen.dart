@@ -24,6 +24,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   String keyword = '';
   List<String> selectedRegions = [];
   List<String> selectedTypes = [];
+  Map<String, Map<String, dynamic>> availabilityCache = {};
 
   @override
   void initState() {
@@ -32,21 +33,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     selectedDateObj = defaultDate;
     selectedDate = DateFormat('yyyy-MM-dd').format(selectedDateObj!);
     applyFilters();
-  }
-
-  void applyFilters() {
-    List<Map<String, dynamic>> target = List.from(campgroundList);
-
-    target = target.where((camp) {
-      final matchKeyword = camp['name'].toString().toLowerCase().contains(keyword.toLowerCase());
-      final matchRegion = selectedRegions.isEmpty || selectedRegions.any((r) => camp['location'].contains(r));
-      final matchType = selectedTypes.isEmpty || selectedTypes.contains(camp['type']);
-      return matchKeyword && matchRegion && matchType;
-    }).toList();
-
-    setState(() {
-      filteredCamps = target;
-    });
   }
 
   Future<Map<String, dynamic>?> fetchAvailability(String campName) async {
@@ -66,6 +52,47 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
       print('❗ Firestore 오류: $e');
     }
     return null;
+  }
+
+  void applyFilters() async {
+    availabilityCache.clear();
+    List<Map<String, dynamic>> target = List.from(campgroundList);
+
+    target = target.where((camp) {
+      final matchKeyword = camp['name'].toString().toLowerCase().contains(keyword.toLowerCase());
+      final matchRegion = selectedRegions.isEmpty || selectedRegions.any((r) => camp['location'].contains(r));
+      final matchType = selectedTypes.isEmpty || selectedTypes.contains(camp['type']);
+      return matchKeyword && matchRegion && matchType;
+    }).toList();
+
+    for (var camp in target) {
+      final name = camp['name'];
+      if (!availabilityCache.containsKey(name)) {
+        final data = await fetchAvailability(name);
+        if (data != null) {
+          availabilityCache[name] = data;
+        }
+      }
+    }
+
+    target.sort((a, b) {
+      final aData = availabilityCache[a['name']] ?? {};
+      final bData = availabilityCache[b['name']] ?? {};
+      final aAvailable = aData['available'] ?? 0;
+      final bAvailable = bData['available'] ?? 0;
+
+      final aIsClosed = aAvailable == 0;
+      final bIsClosed = bAvailable == 0;
+
+      if (aIsClosed && !bIsClosed) return 1;
+      if (!aIsClosed && bIsClosed) return -1;
+      if (aIsClosed && bIsClosed) return a['name'].compareTo(b['name']);
+      return 0;
+    });
+
+    setState(() {
+      filteredCamps = target;
+    });
   }
 
   @override
@@ -108,15 +135,11 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
               itemCount: filteredCamps.length,
               itemBuilder: (context, index) {
                 final camp = filteredCamps[index];
-                return FutureBuilder<Map<String, dynamic>?> (
-                  future: fetchAvailability(camp['name']),
-                  builder: (context, snapshot) {
-                    final available = snapshot.data?['available'] ?? 0;
-                    final total = snapshot.data?['total'] ?? 0;
-                    final isAvailable = available > 0;
-                    return _buildCampItem(camp, available, total, isAvailable);
-                  },
-                );
+                final cache = availabilityCache[camp['name']] ?? {};
+                final available = cache['available'] ?? 0;
+                final total = cache['total'] ?? 0;
+                final isAvailable = available > 0;
+                return _buildCampItem(camp, available, total, isAvailable);
               },
             ),
           ),
