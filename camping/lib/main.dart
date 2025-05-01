@@ -2,7 +2,7 @@ import 'package:camping/screens/camping_info_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/register_screen.dart';
 import 'screens/login_screen.dart';
 import 'main_scaffold.dart';
@@ -13,6 +13,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
   runApp(const MyApp());
 }
 
@@ -30,7 +31,7 @@ class MyApp extends StatelessWidget {
         '/': (context) => const LoginScreen(),           // ✅ 시작화면
         '/main': (context) => const MainScaffold(),      // ✅ 로그인 성공 후 메인
         '/search': (context) => const SearchPage(),      // 검색
-        '/camping_info_screen': (context) => const CampingInfoScreen(),
+        '/camping_info_screen': (context) => const CampingInfoScreen(camp: {},),
         '/signup': (context) => const SignUpScreen(), // ✅ 회원가입 경로 등록
         // '/signup': ... 추후 회원가입 추가 가능
       },
