@@ -10,7 +10,7 @@ from firebase_admin import credentials, firestore
 import time
 
 # Firebase 인증 정보 설정
-cred = credentials.Certificate("camping-8ae8b-firebase-adminsdk-fbsvc-90708e1d14.json")
+cred = credentials.Certificate("camping-2f65b-firebase-adminsdk-fbsvc-9bea14a2ff.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
@@ -46,7 +46,152 @@ driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), opti
 
 driver.get("https://res.knps.or.kr/reservation/searchSimpleCampReservation.do")
 
-campground_info = {'계룡산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[2]/a', 'campgrounds': {'갑사': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[2]/div/ul/li[1]/a', '동학사': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[2]/div/ul/li[2]/a'}}, '내장산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[3]/a', 'campgrounds': {'가인': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[3]/div/ul/li[1]/a', '내장': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[3]/div/ul/li[2]/a', '내장호': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[3]/div/ul/li[3]/a'}}, '다도해해상': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[4]/a', 'campgrounds': {'구계등': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[4]/div/ul/li[1]/a', '염포': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[4]/div/ul/li[2]/a', '팔영산': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[4]/div/ul/li[3]/a'}}, '덕유산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[1]/a', 'campgrounds': {'덕유대1': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[1]/div/ul/li[1]/a', '덕유대2': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[1]/div/ul/li[2]/a', '덕유대3': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[1]/div/ul/li[3]/a'}}, '무등산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[2]/a', 'campgrounds': {'도원': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[2]/div/ul/li/a'}}, '변산반도': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[3]/a', 'campgrounds': {'고사포1': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[3]/div/ul/li[1]/a', '고사포2': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[3]/div/ul/li[2]/a'}}, '북한산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[4]/a', 'campgrounds': {'사기막': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[4]/div/ul/li/a'}}, '설악산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[1]/a', 'campgrounds': {'설악동': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[1]/div/ul/li/a'}}, '소백산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[2]/a', 'campgrounds': {'남천': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[2]/div/ul/li[1]/a', '삼가': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[2]/div/ul/li[2]/a'}}, '오대산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[3]/a', 'campgrounds': {'소금강산': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[3]/div/ul/li/a'}}, '월악산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[4]/a', 'campgrounds': {'닷돈재1': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[4]/div/ul/li[1]/a', '닷돈재2': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[4]/div/ul/li[2]/a', '덕주': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[4]/div/ul/li[3]/a', '송계': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[4]/div/ul/li[4]/a', '용하': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[4]/div/ul/li[5]/a', '하선암': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[4]/div/ul/li[6]/a'}}, '월출산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[1]/a', 'campgrounds': {'천황': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[1]/div/ul/li/a'}}, '주왕산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[2]/a', 'campgrounds': {'상의': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[2]/div/ul/li/a'}}, '지리산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/a', 'campgrounds': {'내원': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[1]/a', '달궁1': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[2]/a', '달궁2': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[3]/a', '덕동': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[4]/a', '백무동': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[5]/a', '뱀사골1': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[6]/a', '뱀사골2': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[7]/a', '소막골': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[8]/a', '학천': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[9]/a'}}, '치악산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[4]/a', 'campgrounds': {'구룡': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[4]/div/ul/li[1]/a', '금대': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[4]/div/ul/li[2]/a'}}, '태백산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[1]/a', 'campgrounds': {'소도': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[1]/div/ul/li/a'}}, '태안해안': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[2]/a', 'campgrounds': {'몽산포': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[2]/div/ul/li[1]/a', '학암포': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[2]/div/ul/li[2]/a'}}, '팔공산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[3]/a', 'campgrounds': {'갓바위': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[3]/div/ul/li[1]/a', '도학': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[3]/div/ul/li[2]/a'}}, '한려해상': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[4]/a', 'campgrounds': {'덕신': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[4]/div/ul/li[1]/a', '학동': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[4]/div/ul/li[2]/a'}}, '가야산': {'xpath': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[1]/a', 'campgrounds': {'백운동': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[1]/div/ul/li[1]/a', '삼정': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[1]/div/ul/li[2]/a', '치인': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[1]/div/ul/li[3]/a'}}}
+campground_info = {
+    '계룡산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[2]/a',
+        'campgrounds': {
+            '계룡산 갑사자동차야영장': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[2]/div/ul/li[1]/a',
+            '계룡산동학사자동차야영장': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[2]/div/ul/li[2]/a'
+        }
+    },
+    '내장산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[3]/a',
+        'campgrounds': {
+            '백양사 가인야영장': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[3]/div/ul/li[1]/a',
+            '내장산국립공원 내장야영장': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[3]/div/ul/li[2]/a',
+            '내장호야영장': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[3]/div/ul/li[3]/a'
+        }
+    },
+    '다도해해상': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[4]/a',
+        'campgrounds': {
+            '다도해해상국립공원 구계등야영장': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[4]/div/ul/li[1]/a',
+            '염포야영장': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[4]/div/ul/li[2]/a',
+            '팔영산야영장': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[4]/div/ul/li[3]/a'
+        }
+    },
+    '덕유산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[1]/a',
+        'campgrounds': {
+            '덕유대 자동차야영장': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[1]/div/ul/li[1]/a'
+        }
+    },
+    '무등산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[2]/a',
+        'campgrounds': {
+            '도원야영장': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[2]/div/ul/li/a'
+        }
+    },
+    '변산반도': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[3]/a',
+        'campgrounds': {
+            '변산반도국립공원 고사포 야영장': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[3]/div/ul/li[1]/a'
+        }
+    },
+    '북한산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[4]/a',
+        'campgrounds': {
+            '북한산 사기막야영장': '//*[@id="container"]/div[2]/div[1]/ul[2]/li[4]/div/ul/li/a'
+        }
+    },
+    '설악산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[1]/a',
+        'campgrounds': {
+            '설악산국립공원 설악동자동차야영장': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[1]/div/ul/li/a'
+        }
+    },
+    '소백산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[2]/a',
+        'campgrounds': {
+            '소백산국립공원 남천야영장': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[2]/div/ul/li[1]/a',
+            '소백산삼가야영장': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[2]/div/ul/li[2]/a'
+        }
+    },
+    '오대산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[3]/a',
+        'campgrounds': {
+            '소금강산': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[3]/div/ul/li/a'
+        }
+    },
+    '월악산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[4]/a',
+        'campgrounds': {
+            '월악산국립공원 닷돈재 자동차야영장': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[4]/div/ul/li[1]/a',
+            '월악산국립공원 닷돈재 자동차야영장': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[4]/div/ul/li[2]/a',
+            '월악산국립공원 덕주야영장': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[4]/div/ul/li[3]/a',
+            '월악산국립공원 송계자동차 야영장': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[4]/div/ul/li[4]/a',
+            '월악산국립공원 용하야영장': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[4]/div/ul/li[5]/a',
+            '하선암 카라반 야영장': '//*[@id="container"]/div[2]/div[1]/ul[3]/li[4]/div/ul/li[6]/a'
+        }
+    },
+    '월출산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[1]/a',
+        'campgrounds': {
+            '월출산국립공원 천황야영장': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[1]/div/ul/li/a'
+        }
+    },
+    '주왕산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[2]/a',
+        'campgrounds': {
+            '주왕산국립공원 상의자동차 야영장': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[2]/div/ul/li/a'
+        }
+    },
+    '지리산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/a',
+        'campgrounds': {
+            '내원야영장': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[1]/a',
+            '달궁자동차 야영장': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[2]/a',
+            '덕동자동차야영장': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[4]/a',
+            '백무동야영장': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[5]/a',
+            '뱀사골 힐링야영장': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[6]/a',
+            '소막골야영장': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[8]/a',
+            '학천야영장': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[3]/div/ul/li[9]/a'
+        }
+    },
+    '치악산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[4]/a',
+        'campgrounds': {
+            '구룡자동차야영장(치악산국립공원)': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[4]/div/ul/li[1]/a',
+            '금대자동차야영장': '//*[@id="container"]/div[2]/div[1]/ul[4]/li[4]/div/ul/li[2]/a'
+        }
+    },
+    '태백산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[1]/a',
+        'campgrounds': {
+            '태백산국립공원 소도야영장': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[1]/div/ul/li/a'
+        }
+    },
+    '태안해안': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[2]/a',
+        'campgrounds': {
+            '몽산포 자동차 야영장': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[2]/div/ul/li[1]/a',
+            '학암포 오토 캠핑장': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[2]/div/ul/li[2]/a'
+        }
+    },
+    '팔공산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[3]/a',
+        'campgrounds': {
+            '팔공산국립공원 갓바위야영장': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[3]/div/ul/li[1]/a',
+            '팔공산국립공원 도학 야영장': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[3]/div/ul/li[2]/a'
+        }
+    },
+    '한려해상': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[4]/a',
+        'campgrounds': {
+            '덕신야영장': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[4]/div/ul/li[1]/a',
+            '학동자동차 야영장': '//*[@id="container"]/div[2]/div[1]/ul[5]/li[4]/div/ul/li[2]/a'
+        }
+    },
+    '가야산': {
+        'xpath': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[1]/a',
+        'campgrounds': {
+            '가야산국립공원 백운동야영장': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[1]/div/ul/li[1]/a',
+            '삼정야영장': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[1]/div/ul/li[2]/a',
+            '치인야영장': '//*[@id="container"]/div[2]/div[1]/ul[1]/li[1]/div/ul/li[3]/a'
+        }
+    }
+}
+
 
 
 for park, data in campground_info.items():
