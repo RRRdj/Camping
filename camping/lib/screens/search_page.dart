@@ -10,21 +10,23 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
+  late DateTime defaultDate;
   DateTime? selectedDate;
   final TextEditingController keywordController = TextEditingController();
   List<String> selectedRegions = [];
   List<String> selectedTypes = [];
   late List<String> regionList;
 
-  DateTime _stripTime(DateTime date) {
-    return DateTime(date.year, date.month, date.day);
-  }
+  DateTime _stripTime(DateTime d) => DateTime(d.year, d.month, d.day);
 
   @override
   void initState() {
     super.initState();
+    final now = _stripTime(DateTime.now());
+    defaultDate = now.add(const Duration(days: 1));
+    selectedDate = defaultDate;
     regionList = campgroundList
-        .map((camp) => camp['location'].toString().split(' ').first)
+        .map((c) => c['location'].toString().split(' ').first)
         .toSet()
         .toList()
       ..sort();
@@ -32,26 +34,26 @@ class _SearchPageState extends State<SearchPage> {
 
   void resetFilters() {
     setState(() {
-      selectedDate = null;
+      selectedDate = defaultDate;
       keywordController.clear();
       selectedRegions.clear();
       selectedTypes.clear();
     });
   }
 
-  bool get isDateRequired {
-    return keywordController.text.trim().isNotEmpty ||
-        selectedRegions.isNotEmpty ||
-        selectedTypes.isNotEmpty;
-  }
+  bool get isDateRequired =>
+      keywordController.text.trim().isNotEmpty ||
+          selectedRegions.isNotEmpty ||
+          selectedTypes.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
-    final DateTime now = _stripTime(DateTime.now());
-    final DateTime minDate = now.add(const Duration(days: 1));
-    final DateTime maxDate = now.add(const Duration(days: 5));
+    final now = _stripTime(DateTime.now());
+    final minDate = now.add(const Duration(days: 1));
+    final maxDate = now.add(const Duration(days: 5));
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: const Text('검색 필터 설정'),
         actions: [
@@ -59,11 +61,46 @@ class _SearchPageState extends State<SearchPage> {
             icon: const Icon(Icons.refresh),
             onPressed: resetFilters,
             tooltip: '필터 초기화',
-          )
+          ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      // 버튼을 화면 하단에 고정, 휴대폰 크기에 맞춰 폭을 채웁니다.
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48), // 높이 고정
+            ),
+            onPressed: () {
+              if (isDateRequired && selectedDate == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('필터를 사용하려면 날짜를 먼저 선택하세요.'),
+                  ),
+                );
+                return;
+              }
+              Navigator.pop(context, {
+                'selectedDate': selectedDate,
+                'keyword': keywordController.text,
+                'selectedRegions': selectedRegions,
+                'selectedTypes': selectedTypes,
+              });
+            },
+            icon: const Icon(Icons.search),
+            label: const Text('검색하기'),
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          top: 16,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -88,15 +125,14 @@ class _SearchPageState extends State<SearchPage> {
                           : minDate,
                       firstDate: minDate,
                       lastDate: maxDate,
-                      selectableDayPredicate: (day) {
-                        return !day.isBefore(minDate) && !day.isAfter(maxDate);
-                      },
+                      selectableDayPredicate: (day) =>
+                      !day.isBefore(minDate) && !day.isAfter(maxDate),
                     );
                     if (picked != null) {
                       setState(() => selectedDate = picked);
                     }
                   },
-                )
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -115,14 +151,14 @@ class _SearchPageState extends State<SearchPage> {
             Wrap(
               spacing: 8,
               children: regionList.map((region) {
-                final isSelected = selectedRegions.contains(region);
+                final selected = selectedRegions.contains(region);
                 return FilterChip(
                   label: Text(region),
-                  selected: isSelected,
-                  onSelected: isDateRequired || selectedDate != null
-                      ? (bool selected) {
+                  selected: selected,
+                  onSelected: (isDateRequired || selectedDate != null)
+                      ? (bool sel) {
                     setState(() {
-                      if (selected) {
+                      if (sel) {
                         selectedRegions.add(region);
                       } else {
                         selectedRegions.remove(region);
@@ -138,14 +174,14 @@ class _SearchPageState extends State<SearchPage> {
             Wrap(
               spacing: 8,
               children: ['국립', '지자체'].map((type) {
-                final isSelected = selectedTypes.contains(type);
+                final selected = selectedTypes.contains(type);
                 return FilterChip(
                   label: Text(type),
-                  selected: isSelected,
-                  onSelected: isDateRequired || selectedDate != null
-                      ? (bool selected) {
+                  selected: selected,
+                  onSelected: (isDateRequired || selectedDate != null)
+                      ? (bool sel) {
                     setState(() {
-                      if (selected) {
+                      if (sel) {
                         selectedTypes.add(type);
                       } else {
                         selectedTypes.remove(type);
@@ -156,28 +192,7 @@ class _SearchPageState extends State<SearchPage> {
                 );
               }).toList(),
             ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  if (isDateRequired && selectedDate == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('필터를 사용하려면 날짜를 먼저 선택하세요.')),
-                    );
-                    return;
-                  }
-                  Navigator.pop(context, {
-                    'selectedDate': selectedDate,
-                    'keyword': keywordController.text,
-                    'selectedRegions': selectedRegions,
-                    'selectedTypes': selectedTypes,
-                  });
-                },
-                icon: const Icon(Icons.search),
-                label: const Text('검색하기'),
-              ),
-            ),
+            // 콘텐츠가 길어져도 버튼은 하단에 고정되어 스크롤 영향 없음
           ],
         ),
       ),
