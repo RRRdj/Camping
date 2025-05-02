@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../campground_data.dart';
 
 /// ─────────────────────────────────────────────────────────────────────────
-/// CampingHomeScreen
+/// CampingHomeScreen – 리디자인 버전 (단색, 라이트 테마)
 /// ─────────────────────────────────────────────────────────────────────────
 class CampingHomeScreen extends StatefulWidget {
   final Map<String, bool> bookmarked;
@@ -21,7 +22,6 @@ class CampingHomeScreen extends StatefulWidget {
 }
 
 class _CampingHomeScreenState extends State<CampingHomeScreen> {
-  // ---------------- 상태 ----------------
   List<Map<String, dynamic>> filteredCamps = [];
   DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
   final TextEditingController keywordController = TextEditingController();
@@ -30,7 +30,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   late final List<String> regionList;
   Map<String, Map<String, dynamic>> availabilityCache = {};
 
-  // ---------------- 라이프사이클 ----------------
   @override
   void initState() {
     super.initState();
@@ -49,7 +48,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     super.dispose();
   }
 
-  // ---------------- Firestore ----------------
   Future<Map<String, dynamic>?> _fetchAvailability(String campName) async {
     try {
       final snapshot =
@@ -68,11 +66,9 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     return null;
   }
 
-  // ---------------- 필터 ----------------
   void _applyFilters() async {
     availabilityCache.clear();
     var target = List<Map<String, dynamic>>.from(campgroundList);
-
     final keyword = keywordController.text.trim().toLowerCase();
     target =
         target.where((camp) {
@@ -87,7 +83,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
           return matchKeyword && matchRegion && matchType;
         }).toList();
 
-    // 가용성 정보 병렬 취득
     await Future.wait(
       target.map((camp) async {
         final data = await _fetchAvailability(camp['name']);
@@ -95,7 +90,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
       }),
     );
 
-    // 정렬
     target.sort((a, b) {
       final aAv = (availabilityCache[a['name']] ?? {})['available'] ?? 0;
       final bAv = (availabilityCache[b['name']] ?? {})['available'] ?? 0;
@@ -121,12 +115,19 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     _applyFilters();
   }
 
-  // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: false,
       appBar: AppBar(
-        title: const Text('금오캠핑'),
+        backgroundColor: Colors.white,
+        elevation: 1,
+        centerTitle: true,
+        title: Text(
+          '금오캠핑',
+          style: GoogleFonts.jua(fontSize: 24, color: Colors.black87),
+        ),
+        iconTheme: IconThemeData(color: Colors.grey.shade600),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -204,7 +205,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
 }
 
 /// ─────────────────────────────────────────────────────────────────────────
-/// Filter Bar (날짜/지역/숙소 유형/초기화)
+/// Filter Bar (날짜/지역/숙소 유형/초기화) – 라이트 그레이 + 파스텔 그린
 /// ─────────────────────────────────────────────────────────────────────────
 class _FilterBar extends StatelessWidget {
   const _FilterBar({
@@ -233,12 +234,6 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const blue = Color(0xFF0D6284);
-    const txtStyle = TextStyle(
-      color: Colors.white,
-      fontWeight: FontWeight.bold,
-    );
-
     final dateText = DateFormat('yyyy.MM.dd').format(selectedDate);
     final regionLabel =
         selectedRegions.isEmpty
@@ -248,18 +243,17 @@ class _FilterBar extends StatelessWidget {
             : '${selectedRegions[0]} 외 ${selectedRegions.length - 1}';
     final typeLabel =
         selectedTypes.isEmpty
-            ? '숙소 유형'
+            ? '유형'
             : selectedTypes.length == 1
             ? selectedTypes[0]
             : '${selectedTypes[0]} 외 ${selectedTypes.length - 1}';
 
     return Container(
-      color: const Color(0xFFE46F2E),
+      color: const Color(0xFFDFF3E3), // 파스텔 그린 톤
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
-          // 날짜 선택
-          _BlueButton(
+          _LightButton(
             onPressed: () async {
               final now = DateTime.now();
               final min = now.add(const Duration(days: 1));
@@ -277,16 +271,25 @@ class _FilterBar extends StatelessWidget {
             },
             child: Row(
               children: [
-                Text(dateText, style: txtStyle),
+                Text(
+                  dateText,
+                  style: TextStyle(
+                    color: Colors.grey.shade800,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(width: 4),
-                const Icon(Icons.calendar_today, color: Colors.white, size: 16),
+                Icon(
+                  Icons.calendar_today,
+                  color: Colors.grey.shade800,
+                  size: 16,
+                ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          // 지역 선택
           Expanded(
-            child: _BlueButton(
+            child: _LightButton(
               onPressed: () async {
                 final sel = await showModalBottomSheet<List<String>>(
                   context: context,
@@ -305,19 +308,18 @@ class _FilterBar extends StatelessWidget {
                   Expanded(
                     child: Text(
                       regionLabel,
-                      style: txtStyle,
+                      style: TextStyle(color: Colors.grey.shade800),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Icon(Icons.arrow_drop_down, color: Colors.white),
+                  Icon(Icons.arrow_drop_down, color: Colors.grey.shade800),
                 ],
               ),
             ),
           ),
           const SizedBox(width: 8),
-          // 숙소 유형
           Expanded(
-            child: _BlueButton(
+            child: _LightButton(
               onPressed: () async {
                 final sel = await showModalBottomSheet<List<String>>(
                   context: context,
@@ -336,20 +338,29 @@ class _FilterBar extends StatelessWidget {
                   Expanded(
                     child: Text(
                       typeLabel,
-                      style: txtStyle,
+                      style: TextStyle(color: Colors.grey.shade800),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Icon(Icons.arrow_drop_down, color: Colors.white),
+                  Icon(Icons.arrow_drop_down, color: Colors.grey.shade800),
                 ],
               ),
             ),
           ),
           const SizedBox(width: 8),
-          // 초기화
-          IconButton(
-            icon: const Icon(Icons.refresh, color: blue),
+          ElevatedButton.icon(
             onPressed: onReset,
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text(''),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey.shade300,
+              foregroundColor: Colors.grey.shade800,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           ),
         ],
       ),
@@ -357,8 +368,8 @@ class _FilterBar extends StatelessWidget {
   }
 }
 
-class _BlueButton extends StatelessWidget {
-  const _BlueButton({required this.child, required this.onPressed});
+class _LightButton extends StatelessWidget {
+  const _LightButton({required this.child, required this.onPressed});
   final Widget child;
   final VoidCallback onPressed;
 
@@ -366,7 +377,9 @@ class _BlueButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF0D6284),
+        backgroundColor: Colors.grey.shade200,
+        foregroundColor: Colors.grey.shade800,
+        elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         minimumSize: const Size(0, 40),
       ),
@@ -375,6 +388,13 @@ class _BlueButton extends StatelessWidget {
     );
   }
 }
+
+/// 이하 기존 _MultiSelectSheet, _CampItem, _NoResultWidget, _CampSearchDelegate 구현은 변동 없음
+
+// ─────────────────────────────────────────────────────────────────────────
+// 아래 나머지 위젯(_MultiSelectSheet, _CampItem, _NoResultWidget, _CampSearchDelegate)
+// 기존 코드와 동일하므로 그대로 복사해 사용해 주세요.
+// ─────────────────────────────────────────────────────────────────────────
 
 /// ─────────────────────────────────────────────────────────────────────────
 /// Multi-select BottomSheet
@@ -477,6 +497,17 @@ class _CampItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = camp['name'];
+    // 1) 남은 좌석 수에 따른 상태 텍스트·색상 계산
+    final statusText =
+        available == 0
+            ? '예약 마감 ($available/$total)'
+            : (available <= 3
+                ? '마감 임박 ($available/$total)'
+                : '예약 가능 ($available/$total)');
+    final statusColor =
+        available == 0
+            ? Colors.red
+            : (available <= 3 ? Colors.orange : Colors.green);
     return Opacity(
       opacity: isAvailable ? 1 : 0.4,
       child: Card(
@@ -521,11 +552,9 @@ class _CampItem extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      isAvailable
-                          ? '예약 가능 ($available/$total)'
-                          : '예약 마감 ($available/$total)',
+                      statusText,
                       style: TextStyle(
-                        color: isAvailable ? Colors.green : Colors.red,
+                        color: statusColor,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -536,7 +565,7 @@ class _CampItem extends StatelessWidget {
                 onPressed:
                     () => Navigator.pushNamed(context, '/camping_info_screen'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isAvailable ? Colors.green : Colors.grey,
+                  backgroundColor: available > 0 ? Colors.green : Colors.grey,
                   foregroundColor: Colors.white,
                 ),
                 child: const Text('둘러보기'),
