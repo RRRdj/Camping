@@ -182,6 +182,7 @@ class _CampingSitesPageState extends State<CampingSitesPage> {
                     },
                     child: _buildCampSiteCard(
                       image:
+
                           isLoadingImages
                               ? 'https://via.placeholder.com/75x56?text=Loading'
                               : (imageUrls['362']?.isNotEmpty == true
