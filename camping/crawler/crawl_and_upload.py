@@ -218,7 +218,7 @@ for park, data in campground_info.items():
             total_sites = 0
 
         availability_data = {}
-        for i in range(1, 6):
+        for i in range(1, 15):
             target_date = datetime.today() + timedelta(days=i)
             month_str = f"{target_date.month:02d}"
             day_str = f"{target_date.day:02d}"
