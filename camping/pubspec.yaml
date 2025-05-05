@@ -37,6 +37,9 @@ dependencies:
   intl: ^0.18.1
   kakao_map_plugin: ^0.3.6
   firebase_auth: ^4.6.4
+  url_launcher: ^6.1.7
+
+  webview_flutter: ^4.0.7
 
   # XML 파싱을 위한 패키지
   xml: ^6.3.0
