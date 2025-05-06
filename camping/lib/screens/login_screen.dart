@@ -52,6 +52,15 @@ class LoginScreen extends StatelessWidget {
               child: const Text('회원가입'),
             ),
             const SizedBox(height: 16),
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/admin');
+              },
+              child: const Text(
+                '관리자 전용 화면',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
           ],
         ),
       ),

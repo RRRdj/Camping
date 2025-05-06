@@ -52,6 +52,9 @@ class _MainScaffoldState extends State<MainScaffold> {
           BottomNavigationBarItem(icon: Icon(Icons.person), label: '내 정보'),
         ],
       ),
+
+
+      
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'package:camping/screens/edit_profile_screen.dart';
+import 'package:camping/screens/setting_screen.dart';
 import 'package:flutter/material.dart';
 
 class MyInfoScreen extends StatelessWidget {
@@ -45,26 +47,10 @@ class MyInfoScreen extends StatelessWidget {
             // 옵션 리스트 영역
             _buildOptionItem(
               context,
-              icon: Icons.book,
-              title: '예약 내역',
-              onTap: () {
-                // 예약 내역 화면으로 이동
-              },
-            ),
-            _buildOptionItem(
-              context,
-              icon: Icons.bookmark,
-              title: '북마크',
-              onTap: () {
-                // 북마크 화면으로 이동
-              },
-            ),
-            _buildOptionItem(
-              context,
               icon: Icons.person,
               title: '개인정보 수정',
               onTap: () {
-                // 개인정보 수정 화면으로 이동
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()));
               },
             ),
             _buildOptionItem(
@@ -72,7 +58,7 @@ class MyInfoScreen extends StatelessWidget {
               icon: Icons.settings,
               title: '환경설정',
               onTap: () {
-                // 환경설정 화면으로 이동
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
               },
             ),
             _buildOptionItem(
@@ -101,4 +87,5 @@ class MyInfoScreen extends StatelessWidget {
       onTap: onTap,
     );
   }
+  
 }
