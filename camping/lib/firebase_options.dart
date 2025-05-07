@@ -23,21 +23,24 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        return ios;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for ios - '
+              'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
+              'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.windows:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
+              'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
+              'you can reconfigure this by running the FlutterFire CLI again.',
         );
       default:
         throw UnsupportedError(
@@ -46,30 +49,20 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAG9M0MrIEX0S7QKd1sF-Gmz8a-6ncePRw',
-    appId: '1:986445583170:android:2516407d2e4edad65c6edb',
-    messagingSenderId: '986445583170',
-    projectId: 'camping-8ae8b',
-    storageBucket: 'camping-8ae8b.firebasestorage.app',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDPdQjzNT63NWmbsYGulLkFr3s573fpCU4',
-    appId: '1:986445583170:ios:bfb878ea787d1e8b5c6edb',
-    messagingSenderId: '986445583170',
-    projectId: 'camping-8ae8b',
-    storageBucket: 'camping-8ae8b.firebasestorage.app',
-    iosBundleId: 'com.example.camping',
-  );
-
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCPjbKm9j5hBqNPI0aDIp2V5Tzuuvfyho8',
-    appId: '1:986445583170:web:b813ccbe1dc7a4d85c6edb',
-    messagingSenderId: '986445583170',
-    projectId: 'camping-8ae8b',
-    authDomain: 'camping-8ae8b.firebaseapp.com',
-    storageBucket: 'camping-8ae8b.firebasestorage.app',
+    apiKey: 'AIzaSyAcY2lCzmeAWasLdMcCpKZ7EyhL_fvw1zI',
+    appId: '1:295678051080:web:45128c67c2fe03b830e2bd',
+    messagingSenderId: '295678051080',
+    projectId: 'camping-2f65b',
+    authDomain: 'camping-2f65b.firebaseapp.com',
+    storageBucket: 'camping-2f65b.firebasestorage.app',
   );
 
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyA1n_qQ2qx5FirytUP7hptfD2r4cj3SoJU',
+    appId: '1:295678051080:android:83bf16475174d58a30e2bd',
+    messagingSenderId: '295678051080',
+    projectId: 'camping-2f65b',
+    storageBucket: 'camping-2f65b.firebasestorage.app',
+  );
 }
