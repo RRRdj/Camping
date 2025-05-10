@@ -32,14 +32,29 @@ dependencies:
     sdk: flutter
     # HTTP 요청을 위한 패키지
   http: ^0.13.6
-  firebase_core: ^2.27.0
-  cloud_firestore: ^4.14.0
+
+  firebase_core: ^3.13.0
+
+  # Auth → core 3.x 와 호환되는 5.x 대
+  firebase_auth: ^5.4.0
+
+  # Firestore → core 3.x 와 호환되는 5.x 대
+  cloud_firestore: ^5.6.7
+
+  # Storage → core 3.x 와 호환되는 12.x 대
+  firebase_storage: ^12.4.5
+
   intl: ^0.18.1
   kakao_map_plugin: ^0.3.6
-  firebase_auth: ^4.6.4
-  url_launcher: ^6.1.7
+  firebase_database: ^11.3.5
 
+  url_launcher: ^6.1.7
+  path_provider: ^2.0.17
   webview_flutter: ^4.0.7
+  image_picker: ^0.8.7+4
+
+
+
 
   # XML 파싱을 위한 패키지
   xml: ^6.3.0
