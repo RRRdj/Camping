@@ -187,6 +187,24 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                               ),
                             ),
                             OutlinedButton.icon(
+                              icon: const Icon(Icons.info_outline),
+                              label: const Text('예약 정보'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.blueGrey,
+                                side: const BorderSide(color: Colors.blueGrey),
+                              ),
+                              onPressed: () {
+                                Navigator.of(context).pushNamed(
+                                  '/camp_reservation_info',
+                                  arguments: {
+                                    'campName': widget.campName,
+                                    'contentId': _contentId,
+                                  },
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
                               icon: const Icon(Icons.calendar_today_outlined),
                               label: const Text('예약 현황'),
                               style: OutlinedButton.styleFrom(
@@ -199,6 +217,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                             ),
                           ],
                         ),
+
                         const SizedBox(height: 8),
                         SizedBox(
                           width: double.infinity,
