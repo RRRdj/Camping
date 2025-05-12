@@ -1,11 +1,16 @@
+// lib/screens/camping_info_screen.dart
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:camping/screens/camping_reservation_screen.dart';
+import 'package:camping/screens/reservation_info_screen.dart';
 
 class CampingInfoScreen extends StatefulWidget {
   final String campName;
@@ -37,35 +42,34 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
 
   final TextEditingController _txtCtr = TextEditingController();
   int _rating = 5;
-
-  String? _contentId; // 캠핑장 contentId 저장용
-  String? _userNickname; // 로그인한 사용자의 닉네임
+  String? _contentId;
+  String? _userNickname;
 
   @override
   void initState() {
     super.initState();
     _bookmarked = widget.isBookmarked;
-
     _campFuture = FirebaseFirestore.instance
         .collection('campgrounds')
         .doc(widget.campName)
         .get();
-
     _imagesFuture = _campFuture.then((doc) {
       final data = doc.data()!;
-      final contentId = data['contentId']?.toString() ?? '';
-      _contentId = contentId; // contentId 저장
+      final cid = data['contentId']?.toString() ?? '';
+      _contentId = cid;
       final firstUrl = data['firstImageUrl'] as String?;
-      return _fetchImages(contentId, firstUrl);
+      return _fetchImages(cid, firstUrl);
     });
-
     _loadUserNickname();
   }
 
   Future<void> _loadUserNickname() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
     setState(() {
       _userNickname = doc.data()?['nickname'] as String?;
     });
@@ -99,194 +103,299 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return Scaffold(
-      body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        future: _campFuture,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snap.hasError || !snap.hasData || !snap.data!.exists) {
-            return const Center(child: Text('캠핑장 정보를 불러올 수 없습니다.'));
-          }
+      body: SafeArea(
+        top: false,
+        child: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          future: _campFuture,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snap.hasError || !snap.hasData || !snap.data!.exists) {
+              return const Center(
+                  child: Text('캠핑장 정보를 불러올 수 없습니다.'));
+            }
 
-          final c = snap.data!.data()!;
-          final dateLabel = DateFormat('MM월 dd일')
-              .format(DateTime.now().add(const Duration(days: 1)));
-          final isAvail = widget.available > 0;
-          final amenities =
-              (c['amenities'] as List<dynamic>?)?.cast<String>() ?? [];
+            final c = snap.data!.data()!;
+            final dateLabel = DateFormat('MM월 dd일')
+                .format(DateTime.now().add(const Duration(days: 1)));
+            final isAvail = widget.available > 0;
+            final amenities =
+                (c['amenities'] as List<dynamic>?)?.cast<String>() ?? [];
+            _contentId ??= c['contentId']?.toString() ?? '';
 
-          _contentId ??= c['contentId']?.toString() ?? '';
-
-          return CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                pinned: true,
-                expandedHeight: 250,
-                backgroundColor: Colors.teal,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: FutureBuilder<List<String>>(
-                    future: _imagesFuture,
-                    builder: (_, imgSnap) {
-                      final imgs = imgSnap.data ?? [];
-                      if (imgs.isEmpty) return Container(color: Colors.grey.shade200);
-                      return PageView.builder(
-                        itemCount: imgs.length,
-                        itemBuilder: (_, i) => Image.network(imgs[i], fit: BoxFit.cover),
-                      );
-                    },
+            return CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  expandedHeight: 250,
+                  backgroundColor: Colors.teal,
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: FutureBuilder<List<String>>(
+                      future: _imagesFuture,
+                      builder: (_, imgSnap) {
+                        final imgs = imgSnap.data ?? [];
+                        if (imgs.isEmpty) {
+                          return Container(color: Colors.grey.shade200);
+                        }
+                        return PageView.builder(
+                          itemCount: imgs.length,
+                          itemBuilder: (_, i) =>
+                              Image.network(imgs[i], fit: BoxFit.cover),
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          c['name'] as String,
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.share, color: Colors.teal),
-                        onPressed: () => _showMsg('공유 기능 준비중'),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          _bookmarked ? Icons.favorite : Icons.favorite_border,
-                          color: _bookmarked ? Colors.red : Colors.grey,
-                        ),
-                        onPressed: () {
-                          setState(() => _bookmarked = !_bookmarked);
-                          widget.onToggleBookmark(widget.campName);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '$dateLabel ${isAvail ? '예약 가능' : '예약 마감'} (${widget.available}/${widget.total})',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: isAvail ? Colors.green : Colors.red,
-                                ),
-                              ),
+                SliverPadding(
+                  padding:
+                  EdgeInsets.fromLTRB(16, 12, 16, bottomInset + 12),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      // 제목 / 공유 / 즐겨찾기
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              c['name'] as String,
+                              style: const TextStyle(
+                                  fontSize: 24, fontWeight: FontWeight.bold),
                             ),
-                            OutlinedButton.icon(
-                              icon: const Icon(Icons.calendar_today_outlined),
-                              label: const Text('예약 현황'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.teal,
-                                side: const BorderSide(color: Colors.teal),
-                              ),
-                              onPressed: () {
-                                _showMsg('예약 현황 기능 준비중');
-                              },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.share, color: Colors.teal),
+                            onPressed: () => _showMsg('공유 기능 준비중'),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              _bookmarked
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: _bookmarked ? Colors.red : Colors.grey,
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              final type = c['type'];
-                              String? url;
-                              if (type == '국립') {
-                                url = 'https://reservation.knps.or.kr/reservation/searchSimpleCampReservation.do';
-                              } else if (type == '지자체') {
-                                url = c['resveUrl'];
-                              }
-                              if (url == null || url.isEmpty) {
-                                _showMsg('예약 페이지가 없습니다.');
-                                return;
-                              }
-                              final uri = Uri.parse(url);
-                              if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri, mode: LaunchMode.externalApplication);
-                              } else {
-                                _showMsg('페이지를 열 수 없습니다.');
-                              }
+                            onPressed: () {
+                              setState(() => _bookmarked = !_bookmarked);
+                              widget.onToggleBookmark(widget.campName);
                             },
-                            child: const Text('예약하기'),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // 날짜 + 예약 상태
+                      Text(
+                        '$dateLabel ${isAvail ? '예약 가능' : '예약 마감'} '
+                            '(${widget.available}/${widget.total})',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isAvail ? Colors.green : Colors.red,
                         ),
-                      ],
-                    ),
-                    const Divider(height: 32),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _InfoRow(
-                          label: '주소',
-                          value: c['addr1'] ?? '정보없음',
-                          icon: Icons.location_on,
-                          color: Colors.teal,
-                        ),
-                        _InfoRow(
-                          label: '전화번호',
-                          value: c['tel'] ?? '정보없음',
-                          icon: Icons.phone,
-                          color: Colors.teal,
-                          onTap: () => _launchDialer(c['tel'] ?? ''),
-                        ),
-                        _InfoRow(
-                          label: '캠핑장 유형',
-                          value: c['inDuty'] ?? '정보없음',
-                          icon: Icons.event_note,
-                          color: Colors.blueGrey,
-                        ),
-                        if ((c['lctCl'] ?? '').isNotEmpty)
-                          _InfoRow(
-                            label: '환경',
-                            value: c['lctCl'],
-                            icon: Icons.nature,
-                            color: Colors.brown,
+                      ),
+                      const SizedBox(height: 12),
+                      // 예약 현황 / 예약정보
+                      Row(
+                        children: [
+                          OutlinedButton.icon(
+                            icon: const Icon(
+                                Icons.calendar_today_outlined),
+                            label: const Text('예약 현황'),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      CampingReservationScreen(camp: {
+                                        'name': c['name']
+                                      }),
+                                ),
+                              );
+                            },
                           ),
-                      ],
-                    ),
-                    const Divider(height: 32),
-                    _AmenitySection(amenities: amenities),
-                    const Divider(height: 32),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text('상세 정보', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                        SizedBox(height: 8),
-                        Text('이곳에 해당 야영장의 시설 설명, 이용 요금, 부가 서비스 등을 표시할 수 있습니다.'),
-                      ],
-                    ),
-                    const Divider(height: 32),
-                    _ReviewForm(
-                      txtCtr: _txtCtr,
-                      rating: _rating,
-                      onRating: (v) => setState(() => _rating = v),
-                      onSubmit: _submitReview,
-                      userNickname: _userNickname,
-                    ),
-                    const Divider(height: 32),
-                    _ReviewList(contentId: _contentId ?? ''),
-                    const SizedBox(height: 32),
-                  ]),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.info_outline),
+                            label: const Text('예약정보'),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                  const ReservationInfoScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // 예약하기 버튼
+                      ElevatedButton(
+                        onPressed: () async {
+                          final type = c['type'];
+                          String? url;
+                          if (type == '국립') {
+                            url =
+                            'https://reservation.knps.or.kr/reservation/searchSimpleCampReservation.do';
+                          } else {
+                            url = c['resveUrl'];
+                          }
+                          if (url == null || url.isEmpty) {
+                            _showMsg('예약 페이지가 없습니다.');
+                            return;
+                          }
+                          final uri = Uri.parse(url);
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri,
+                                mode: LaunchMode.externalApplication);
+                          } else {
+                            _showMsg('페이지를 열 수 없습니다.');
+                          }
+                        },
+                        child: const Text('예약하기'),
+                      ),
+                      const Divider(height: 32),
+
+                      // 주소
+                      _InfoRow(
+                        label: '주소',
+                        value: c['addr1'] ?? '정보없음',
+                        icon: Icons.location_on,
+                        color: Colors.teal,
+                      ),
+
+                      // ─── Kakao Map InAppWebView ───
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 200,
+                        child: Builder(builder: (ctx) {
+                          final lat = double.tryParse(
+                              c['mapY'] as String? ?? '') ??
+                              0.0;
+                          final lng = double.tryParse(
+                              c['mapX'] as String? ?? '') ??
+                              0.0;
+
+                          // document.write 훅킹 + HTTPS 업그레이드 + Kakao SDK 로드
+                          final html = '''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+  <style>
+    html, body, #map {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <script>
+    (function(){
+      const _old = document.write.bind(document);
+      document.write = function(s){
+        _old(s.replace(/http:\\/\\/t1\\.daumcdn\\.net/g, 'https://t1.daumcdn.net'));
+      }
+    })();
+  </script>
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4807f3322c219648ee8e346b3bfea1d7"></script>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    const coord = new kakao.maps.LatLng($lat, $lng);
+    const map = new kakao.maps.Map(
+      document.getElementById('map'),
+      { center: coord, level: 3 }
+    );
+    const imageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png';
+    const imageSize = new kakao.maps.Size(24,35);
+    const imageOption = { offset: new kakao.maps.Point(12,35) };
+    const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+    const marker = new kakao.maps.Marker({
+      position: coord,
+      image: markerImage
+    });
+    marker.setMap(map);
+
+    // ✅ 지도 렌더링이 끝난 뒤에 다시 중앙으로
+    kakao.maps.event.addListener(map, 'idle', function() {
+      map.setCenter(coord);
+    });
+  </script>
+</body>
+</html>
+
+''';
+
+                          return InAppWebView(
+                            initialData: InAppWebViewInitialData(data: html),
+                            initialOptions: InAppWebViewGroupOptions(
+                              android: AndroidInAppWebViewOptions(
+                                mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+
+                              ),
+                              ios: IOSInAppWebViewOptions(
+                                allowsInlineMediaPlayback: true,
+                              ),
+                            ),
+                            onWebViewCreated: (controller) {
+                              // 필요하다면 추가 로직
+                            },
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 12),
+                      // ─── Map 끝 ───
+
+                      _InfoRow(
+                        label: '전화번호',
+                        value: c['tel'] ?? '정보없음',
+                        icon: Icons.phone,
+                        color: Colors.teal,
+                        onTap: () => _launchDialer(c['tel'] ?? ''),
+                      ),
+                      _InfoRow(
+                        label: '캠핑장 유형',
+                        value: c['inDuty'] ?? '정보없음',
+                        icon: Icons.event_note,
+                        color: Colors.blueGrey,
+                      ),
+                      if ((c['lctCl'] ?? '').isNotEmpty)
+                        _InfoRow(
+                          label: '환경',
+                          value: c['lctCl']!,
+                          icon: Icons.nature,
+                          color: Colors.brown,
+                        ),
+                      const Divider(height: 32),
+                      _AmenitySection(amenities: amenities),
+                      const Divider(height: 32),
+                      const Text('상세 정보',
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      const Text(
+                          '이곳에 해당 야영장의 시설 설명, 이용 요금, 부가 서비스 등을 표시할 수 있습니다.'),
+                      const Divider(height: 32),
+                      _ReviewForm(
+                        txtCtr: _txtCtr,
+                        rating: _rating,
+                        onRating: (v) => setState(() => _rating = v),
+                        onSubmit: _submitReview,
+                        userNickname: _userNickname,
+                      ),
+                      const Divider(height: 32),
+                      _ReviewList(contentId: _contentId ?? ''),
+                    ]),
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -315,7 +424,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
       return;
     }
     if ((_userNickname ?? '').isEmpty) {
-      _showMsg('닉네임 정보가 없습니다. 마이페이지에서 닉네임을 설정하세요.');
+      _showMsg('닉네임 정보가 없습니다.');
       return;
     }
 
@@ -353,7 +462,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
   }
 
   void _showMsg(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
   }
 }
 
@@ -383,7 +493,8 @@ class _InfoRow extends StatelessWidget {
           children: [
             Icon(icon, color: color, size: 20),
             const SizedBox(width: 8),
-            Text('$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('$label: ',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             Expanded(child: Text(value)),
           ],
         ),
@@ -403,7 +514,8 @@ class _AmenitySection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('편의시설', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        const Text('편의시설',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -435,29 +547,26 @@ class _ReviewForm extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text(
-        '리뷰 작성',
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-      ),
+      const Text('리뷰 작성',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
       const SizedBox(height: 8),
       if (userNickname != null)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Text('작성자: $userNickname', style: const TextStyle(color: Colors.grey)),
+          child: Text('작성자: $userNickname',
+              style: const TextStyle(color: Colors.grey)),
         ),
       Row(
         children: [
-          const Text('평점:'),
-          const SizedBox(width: 8),
+          const Text('평점:'), const SizedBox(width: 8),
           DropdownButton<int>(
             value: rating,
-            items: [
-              for (var v in List.generate(5, (i) => i + 1))
-                DropdownMenuItem(value: v, child: Text('$v')),
-            ],
-            onChanged: (int? newValue) {
-              if (newValue == null) return;
-              onRating(newValue);
+            items: List.generate(
+                5,
+                    (i) => DropdownMenuItem(
+                    value: i + 1, child: Text('${i + 1}'))),
+            onChanged: (v) {
+              if (v != null) onRating(v);
             },
           ),
         ],
@@ -469,7 +578,8 @@ class _ReviewForm extends StatelessWidget {
         maxLines: 5,
         decoration: InputDecoration(
           labelText: '내용',
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          border:
+          OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
       const SizedBox(height: 8),
@@ -486,157 +596,13 @@ class _ReviewList extends StatelessWidget {
   final String contentId;
   const _ReviewList({required this.contentId});
 
-  Future<void> _deleteReview(
-      BuildContext context,
-      String reviewId,
-      String userId,
-      String content,
-      Timestamp date,
-      ) async {
-    // 1. 캠핑장별 리뷰 삭제
-    await FirebaseFirestore.instance
-        .collection('campground_reviews')
-        .doc(contentId)
-        .collection('reviews')
-        .doc(reviewId)
-        .delete();
-
-    // 2. 사용자별 내가 쓴 리뷰 삭제 (user_reviews)
-    final userReviews = await FirebaseFirestore.instance
-        .collection('user_reviews')
-        .doc(userId)
-        .collection('reviews')
-        .where('contentId', isEqualTo: contentId)
-        .where('content', isEqualTo: content)
-        .where('date', isEqualTo: date)
-        .get();
-
-    for (var doc in userReviews.docs) {
-      await doc.reference.delete();
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('후기가 삭제되었습니다.')),
-    );
-  }
-
-  Future<void> _editReview(
-      BuildContext context, {
-        required String reviewId,
-        required String userId,
-        required String oldContent,
-        required int oldRating,
-        required Timestamp date,
-      }) async {
-    final txtController = TextEditingController(text: oldContent);
-    int rating = oldRating;
-
-    final result = await showDialog<Map<String, dynamic>?>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('후기 수정'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                const Text('평점:'),
-                const SizedBox(width: 8),
-                DropdownButton<int>(
-                  value: rating,
-                  items: [
-                    for (var v in List.generate(5, (i) => i + 1))
-                      DropdownMenuItem(value: v, child: Text('$v')),
-                  ],
-                  onChanged: (int? newValue) {
-                    if (newValue != null) {
-                      rating = newValue;
-                      (ctx as Element).markNeedsBuild();
-                    }
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: txtController,
-              minLines: 3,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                labelText: '내용',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(null),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop({
-                'content': txtController.text.trim(),
-                'rating': rating,
-              });
-            },
-            child: const Text('저장'),
-          ),
-        ],
-      ),
-    );
-
-    if (result == null) return;
-    final newContent = result['content'] as String;
-    final newRating = result['rating'] as int;
-
-    if (newContent.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('내용을 입력하세요.')),
-      );
-      return;
-    }
-
-    // 1. 캠핑장별 리뷰 업데이트
-    await FirebaseFirestore.instance
-        .collection('campground_reviews')
-        .doc(contentId)
-        .collection('reviews')
-        .doc(reviewId)
-        .update({
-      'content': newContent,
-      'rating': newRating,
-    });
-
-    // 2. 사용자별 내가 쓴 리뷰 업데이트 (user_reviews)
-    final userReviews = await FirebaseFirestore.instance
-        .collection('user_reviews')
-        .doc(userId)
-        .collection('reviews')
-        .where('contentId', isEqualTo: contentId)
-        .where('content', isEqualTo: oldContent)
-        .where('date', isEqualTo: date)
-        .get();
-
-    for (var doc in userReviews.docs) {
-      await doc.reference.update({
-        'content': newContent,
-        'rating': newRating,
-      });
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('후기가 수정되었습니다.')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (contentId.isEmpty) {
       return const Text('리뷰를 불러올 수 없습니다.');
     }
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('campground_reviews')
@@ -648,104 +614,158 @@ class _ReviewList extends StatelessWidget {
         if (!snapshot.hasData) return const CircularProgressIndicator();
         final docs = snapshot.data!.docs;
         if (docs.isEmpty) return const Text('아직 등록된 리뷰가 없습니다.');
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('후기', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            ...docs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              final nick = data['nickname'] ?? '익명';
-              final date = data['date'] != null
-                  ? (data['date'] as Timestamp).toDate().toString().substring(0, 10)
-                  : '';
-              final rating = data['rating'] ?? 5;
-              final content = data['content'] ?? '';
-              final userId = data['userId'] ?? '';
-              final reviewId = doc.id;
-              final timestamp = data['date'] as Timestamp?;
+          children: docs.map((doc) {
+            final data = doc.data()! as Map<String, dynamic>;
+            final reviewerId = data['userId'] ?? '';
+            final reviewId = doc.id;
+            final nick = data['nickname'] ?? '익명';
+            final date = data['date'] != null
+                ? (data['date'] as Timestamp).toDate().toString().substring(0, 10)
+                : '';
+            final rating = data['rating'] ?? 5;
+            final content = data['content'] ?? '';
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(nick, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 8),
-                      Text(date, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                      if (currentUser != null && userId == currentUser.uid)
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, size: 18, color: Colors.teal),
-                              tooltip: '수정',
-                              onPressed: () async {
-                                await _editReview(
-                                  context,
-                                  reviewId: reviewId,
-                                  userId: userId,
-                                  oldContent: content,
-                                  oldRating: rating,
-                                  date: timestamp!,
-                                );
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, size: 18, color: Colors.red),
-                              tooltip: '삭제',
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: const Text('후기 삭제'),
-                                    content: const Text('정말로 이 후기를 삭제하시겠습니까?'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.of(ctx).pop(false),
-                                        child: const Text('취소'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () => Navigator.of(ctx).pop(true),
-                                        child: const Text('삭제', style: TextStyle(color: Colors.red)),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                                if (confirm == true) {
-                                  await _deleteReview(
-                                    context,
-                                    reviewId,
-                                    userId,
-                                    content,
-                                    timestamp!,
-                                  );
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: List.generate(
-                      5,
-                          (i) => Icon(
-                        i < rating ? Icons.star : Icons.star_border,
-                        color: Colors.green,
-                        size: 16,
-                      ),
+            List<Widget> actionButtons = [];
+            if (currentUser != null && reviewerId == currentUser.uid) {
+              actionButtons.addAll([
+                IconButton(
+                  icon:
+                  const Icon(Icons.edit, size: 18, color: Colors.teal),
+                  tooltip: '수정',
+                  onPressed: () {},
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete,
+                      size: 18, color: Colors.red),
+                  tooltip: '삭제',
+                  onPressed: () {},
+                ),
+              ]);
+            } else if (currentUser != null) {
+              actionButtons.add(
+                IconButton(
+                  icon: const Icon(Icons.flag,
+                      size: 18, color: Colors.redAccent),
+                  tooltip: '신고',
+                  onPressed: () => _showReportDialog(
+                      context, reviewId, reviewerId),
+                ),
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(nick,
+                        style:
+                        const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 8),
+                    Text(date,
+                        style: const TextStyle(
+                            color: Colors.grey, fontSize: 12)),
+                    const Spacer(),
+                    ...actionButtons
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: List.generate(
+                    5,
+                        (i) => Icon(
+                      i < rating ? Icons.star : Icons.star_border,
+                      color: Colors.green,
+                      size: 16,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(content),
-                  const Divider(),
-                ],
-              );
-            }),
-          ],
+                ),
+                const SizedBox(height: 4),
+                Text(content),
+                const Divider(),
+              ],
+            );
+          }).toList(),
         );
       },
     );
+  }
+
+  Future<void> _showReportDialog(
+      BuildContext context, String reviewId, String reportedUserId) async {
+    final reporter = FirebaseAuth.instance.currentUser;
+    if (reporter == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('로그인 후 이용해주세요.')));
+      return;
+    }
+
+    final reasonCtrl = TextEditingController();
+    final reason = await showDialog<String?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('신고 사유 입력'),
+        content: TextField(
+          controller: reasonCtrl,
+          maxLines: 3,
+          decoration:
+          const InputDecoration(hintText: '신고 사유를 입력하세요'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, reasonCtrl.text.trim()),
+              child: const Text('확인')),
+        ],
+      ),
+    );
+    if (reason == null || reason.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('신고 확인'),
+        content: const Text('이 리뷰를 신고하시겠습니까?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('신고')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(reporter.uid)
+        .get();
+    final reporterNickname = userDoc.data()?['nickname'] as String? ?? '';
+
+    final batch = FirebaseFirestore.instance.batch();
+    final reportRef = FirebaseFirestore.instance.collection('review_reports').doc();
+    batch.set(reportRef, {
+      'contentId': contentId,
+      'reviewId': reviewId,
+      'reportedUserId': reportedUserId,
+      'reporterUid': reporter.uid,
+      'reporterEmail': reporter.email ?? '',
+      'reporterNickname': reporterNickname,
+      'reason': reason,
+      'date': FieldValue.serverTimestamp(),
+    });
+
+    final reviewDocRef = FirebaseFirestore.instance
+        .collection('campground_reviews')
+        .doc(contentId)
+        .collection('reviews')
+        .doc(reviewId);
+    batch.update(reviewDocRef, {'reportCount': FieldValue.increment(1)});
+
+    await batch.commit();
+
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('신고가 접수되었습니다.')));
   }
 }

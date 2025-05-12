@@ -1,10 +1,12 @@
-// lib/screens/my_info_screen.dart
+// lib/screens/my_info_screen.dart (수정된 부분 포함)
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:camping/screens/edit_profile_screen.dart';
 import 'package:camping/screens/setting_screen.dart';
 import 'package:camping/screens/my_review_screen.dart';
+
 class MyInfoScreen extends StatelessWidget {
   const MyInfoScreen({Key? key}) : super(key: key);
 
@@ -25,21 +27,16 @@ class MyInfoScreen extends StatelessWidget {
             .doc(user.uid)
             .get(),
         builder: (context, snapshot) {
-          // 1) 로딩 중
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          // 2) 쿼리 에러
           if (snapshot.hasError) {
             return Center(child: Text('오류 발생: ${snapshot.error}'));
           }
           final doc = snapshot.data;
-          // 3) 문서 자체가 없을 때
           if (doc == null || !doc.exists) {
             return const Center(child: Text('프로필 데이터를 찾을 수 없습니다.'));
           }
-
-          // 4) 정상적으로 데이터가 있을 때
           final data = doc.data()!;
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -51,8 +48,7 @@ class MyInfoScreen extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 50,
-                        backgroundImage:
-                        data['photoUrl'] != null && data['photoUrl'] != ''
+                        backgroundImage: data['photoUrl'] != null && data['photoUrl'] != ''
                             ? NetworkImage(data['photoUrl']!)
                             : null,
                         backgroundColor: Colors.grey[200],
@@ -65,7 +61,7 @@ class MyInfoScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "닉네임: "+data['nickname'] ?? '',
+                        "닉네임: ${data['nickname'] ?? ''}",
                         style: TextStyle(
                             fontSize: 14, color: Colors.grey.shade600),
                       ),
@@ -81,7 +77,6 @@ class MyInfoScreen extends StatelessWidget {
                 const Divider(),
                 const SizedBox(height: 16),
 
-                const SizedBox(height: 24),
                 _buildOptionItem(
                   context,
                   icon: Icons.person,
@@ -118,6 +113,67 @@ class MyInfoScreen extends StatelessWidget {
                     );
                   },
                 ),
+                // 회원 탈퇴 옵션 추가
+                _buildOptionItem(
+                  context,
+                  icon: Icons.delete_forever,
+                  title: '회원 탈퇴',
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('회원 탈퇴'),
+                        content: const Text('정말 탈퇴하시겠습니까? 탈퇴 시 복구할 수 없습니다.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('취소'),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              Navigator.pop(ctx);
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (_) => const Center(child: CircularProgressIndicator()),
+                              );
+                              final uid = user.uid;
+                              // Firestore 문서 삭제
+                              await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+                              // Storage 이미지 삭제
+                              try {
+                                await FirebaseStorage.instance
+                                    .ref()
+                                    .child('userProfileImages/$uid.jpg')
+                                    .delete();
+                              } catch (_) {}
+                              // Auth 사용자 삭제
+                              try {
+                                await user.delete();
+                              } on FirebaseAuthException catch (e) {
+                                if (e.code == 'requires-recent-login') {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('최근 로그인 인증이 필요합니다. 다시 로그인해주세요.')),
+                                  );
+                                  await FirebaseAuth.instance.signOut();
+                                  Navigator.pushReplacementNamed(context, '/');
+                                  return;
+                                }
+                              }
+                              await FirebaseAuth.instance.signOut();
+                              Navigator.pushReplacementNamed(context, '/');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('회원 탈퇴가 완료되었습니다.')),
+                              );
+                            },
+                            child: const Text('탈퇴', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
                 _buildOptionItem(
                   context,
                   icon: Icons.logout,
@@ -142,10 +198,9 @@ class MyInfoScreen extends StatelessWidget {
         required VoidCallback onTap,
       }) {
     return ListTile(
-      leading: Icon(icon, color: Colors.teal),
+      leading: Icon(icon, color: icon == Icons.delete_forever ? Colors.red : Colors.teal),
       title: Text(title, style: const TextStyle(fontSize: 16)),
-      trailing:
-      const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
       onTap: onTap,
     );
   }
