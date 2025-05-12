@@ -1,6 +1,7 @@
 // lib/screens/camping_info_screen.dart
 
 import 'dart:convert';
+import 'package:camping/screens/camp_reservation_info_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
@@ -221,8 +222,11 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                  const ReservationInfoScreen(),
+                                  builder: (_) => const CampReservationInfoScreen(),
+                                  settings: RouteSettings(arguments: {
+                                    'campName': c['name'],
+                                    'contentId': _contentId,
+                                  }),
                                 ),
                               );
                             },
