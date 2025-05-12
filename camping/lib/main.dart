@@ -13,6 +13,7 @@ import 'screens/search_page.dart';
 import 'screens/admin_camp_list_screen.dart';
  import 'firebase_options.dart';
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -41,7 +42,7 @@ class MyApp extends StatelessWidget {
         '/admin': (ctx) => const AdminDashboardScreen(),
         '/admin/camps': (ctx) => const AdminCampListScreen(),
         '/admin/reviews': (ctx) => const AdminReviewScreen(),
-        '/admin/camp_edit': (ctx) => const EditCampScreen(),
+
 
       },
     );

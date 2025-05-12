@@ -6,6 +6,8 @@ import 'campground_data.dart';
 import 'screens/camping_home_screen.dart';
 import 'screens/bookmark_screen.dart';
 import 'screens/my_info_screen.dart';
+// 지도 페이지 위젯을 import
+import 'screens/nearby_map_page.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -50,7 +52,6 @@ class _MainScaffoldState extends State<MainScaffold> {
 
     final isBookmarked = bookmarked[campName] == true;
 
-    // 🔹 1. UI를 즉시 반영
     setState(() {
       if (isBookmarked) {
         bookmarked.remove(campName);
@@ -59,7 +60,6 @@ class _MainScaffoldState extends State<MainScaffold> {
       }
     });
 
-    // 🔸 2. Firestore는 비동기로 처리
     final docRef = _fire
         .collection('users')
         .doc(user.uid)
@@ -78,11 +78,13 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    // 4개의 스크린 리스트: 홈, 지도, 북마크, 내 정보
     final screens = [
       CampingHomeScreen(
         bookmarked: bookmarked,
         onToggleBookmark: toggleBookmark,
       ),
+      NearbyMapPage(),  // ← 여기에 지도 페이지 추가
       BookmarkScreen(
         key: ValueKey(bookmarked.length),
         bookmarked: bookmarked,
@@ -102,9 +104,22 @@ class _MainScaffoldState extends State<MainScaffold> {
         unselectedItemColor: Colors.grey,
         onTap: (i) => setState(() => _selectedIndex = i),
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
-          BottomNavigationBarItem(icon: Icon(Icons.bookmark_border), label: '북마크'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: '내 정보'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: '홈',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.map),  // 지도 아이콘
+            label: '지도',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bookmark_border),
+            label: '북마크',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: '내 정보',
+          ),
         ],
       ),
     );
