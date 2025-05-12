@@ -1,5 +1,6 @@
 import 'package:camping/screens/admin_main_screen.dart';
 import 'package:camping/screens/admin_review_screen.dart';
+import 'package:camping/screens/camp_reservation_info_screen.dart';
 import 'package:camping/screens/camping_home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -11,8 +12,7 @@ import 'screens/register_screen.dart';     // SignUpScreen
 import 'main_scaffold.dart';
 import 'screens/search_page.dart';
 import 'screens/admin_camp_list_screen.dart';
- import 'firebase_options.dart';
-
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,8 +42,7 @@ class MyApp extends StatelessWidget {
         '/admin': (ctx) => const AdminDashboardScreen(),
         '/admin/camps': (ctx) => const AdminCampListScreen(),
         '/admin/reviews': (ctx) => const AdminReviewScreen(),
-
-
+        '/camp_reservation_info': (ctx) => const CampReservationInfoScreen(),
       },
     );
   }
