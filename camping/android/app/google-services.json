@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "986445583170",
-    "project_id": "camping-8ae8b",
-    "storage_bucket": "camping-8ae8b.firebasestorage.app"
+    "project_number": "295678051080",
+    "project_id": "camping-2f65b",
+    "storage_bucket": "camping-2f65b.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:986445583170:android:2516407d2e4edad65c6edb",
+        "mobilesdk_app_id": "1:295678051080:android:83bf16475174d58a30e2bd",
         "android_client_info": {
           "package_name": "com.example.camping"
         }
@@ -15,26 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAG9M0MrIEX0S7QKd1sF-Gmz8a-6ncePRw"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:986445583170:android:2cdbc165e00f7fcc5c6edb",
-        "android_client_info": {
-          "package_name": "kr.ac.kumoh.camping"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyAG9M0MrIEX0S7QKd1sF-Gmz8a-6ncePRw"
+          "current_key": "AIzaSyA1n_qQ2qx5FirytUP7hptfD2r4cj3SoJU"
         }
       ],
       "services": {
