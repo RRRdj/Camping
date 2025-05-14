@@ -221,8 +221,11 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                  const ReservationInfoScreen(),
+                                  builder: (_) => ReservationInfoScreen(),
+                                  settings: RouteSettings(arguments: {
+                                    'campName': c['name'],
+                                    'contentId': _contentId,
+                                  }),
                                 ),
                               );
                             },
@@ -242,7 +245,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                             url = c['resveUrl'];
                           }
                           if (url == null || url.isEmpty) {
-                            _showMsg('예약 페이지가 없습니다.');
+                            _showMsg('예약 페이지가 없습니다.\n전화로 문의하세요: ${c['tel'] ?? '-'}');
                             return;
                           }
                           final uri = Uri.parse(url);
@@ -370,9 +373,15 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                           icon: Icons.nature,
                           color: Colors.brown,
                         ),
+
+
+
                       const Divider(height: 32),
                       _AmenitySection(amenities: amenities),
                       const Divider(height: 32),
+
+
+
                       const Text('상세 정보',
                           style: TextStyle(
                               fontSize: 20, fontWeight: FontWeight.bold)),
@@ -503,6 +512,7 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+
 // --- 편의시설 표시용 위젯 ---
 class _AmenitySection extends StatelessWidget {
   final List<String> amenities;
@@ -510,7 +520,15 @@ class _AmenitySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (amenities.isEmpty) return const SizedBox();
+    if (amenities.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Text(
+          '편의시설 정보가 없습니다.\n전화로 문의하세요',
+          style: const TextStyle(color: Colors.grey, fontSize: 14),
+        ),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -526,6 +544,7 @@ class _AmenitySection extends StatelessWidget {
     );
   }
 }
+
 
 // --- 리뷰 작성 폼 위젯 ---
 class _ReviewForm extends StatelessWidget {
@@ -619,39 +638,35 @@ class _ReviewList extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: docs.map((doc) {
             final data = doc.data()! as Map<String, dynamic>;
-            final reviewerId = data['userId'] ?? '';
-            final reviewId = doc.id;
-            final nick = data['nickname'] ?? '익명';
-            final date = data['date'] != null
+            final reviewerId = data['userId'] as String? ?? '';
+            final reviewId   = doc.id;
+            final nick       = data['nickname'] as String? ?? '익명';
+            final date       = data['date'] != null
                 ? (data['date'] as Timestamp).toDate().toString().substring(0, 10)
                 : '';
-            final rating = data['rating'] ?? 5;
-            final content = data['content'] ?? '';
+            final rating     = data['rating']   as int?    ?? 5;
+            final content    = data['content']  as String? ?? '';
 
             List<Widget> actionButtons = [];
             if (currentUser != null && reviewerId == currentUser.uid) {
               actionButtons.addAll([
                 IconButton(
-                  icon:
-                  const Icon(Icons.edit, size: 18, color: Colors.teal),
+                  icon: const Icon(Icons.edit, size: 18, color: Colors.teal),
                   tooltip: '수정',
-                  onPressed: () {},
+                  onPressed: () => _showEditDialog(context, reviewId, rating, content),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete,
-                      size: 18, color: Colors.red),
+                  icon: const Icon(Icons.delete, size: 18, color: Colors.red),
                   tooltip: '삭제',
-                  onPressed: () {},
+                  onPressed: () => _showDeleteDialog(context, reviewId),
                 ),
               ]);
             } else if (currentUser != null) {
               actionButtons.add(
                 IconButton(
-                  icon: const Icon(Icons.flag,
-                      size: 18, color: Colors.redAccent),
+                  icon: const Icon(Icons.flag, size: 18, color: Colors.redAccent),
                   tooltip: '신고',
-                  onPressed: () => _showReportDialog(
-                      context, reviewId, reviewerId),
+                  onPressed: () => _showReportDialog(context, reviewId, reviewerId),
                 ),
               );
             }
@@ -661,15 +676,11 @@ class _ReviewList extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(nick,
-                        style:
-                        const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(nick, style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(width: 8),
-                    Text(date,
-                        style: const TextStyle(
-                            color: Colors.grey, fontSize: 12)),
+                    Text(date, style: const TextStyle(color: Colors.grey, fontSize: 12)),
                     const Spacer(),
-                    ...actionButtons
+                    ...actionButtons,
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -692,6 +703,84 @@ class _ReviewList extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// 수정 다이얼로그 띄우고 Firestore 업데이트
+  Future<void> _showEditDialog(
+      BuildContext context,
+      String reviewId,
+      int oldRating,
+      String oldContent,
+      ) async {
+    final contentCtrl = TextEditingController(text: oldContent);
+    int newRating = oldRating;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('리뷰 수정'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButton<int>(
+              value: newRating,
+              items: List.generate(5, (i) => i + 1)
+                  .map((v) => DropdownMenuItem(value: v, child: Text('$v')))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) newRating = v;
+              },
+            ),
+            TextField(
+              controller: contentCtrl,
+              maxLines: 3,
+              decoration: const InputDecoration(labelText: '내용'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true),  child: const Text('확인')),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await FirebaseFirestore.instance
+          .collection('campground_reviews')
+          .doc(contentId)
+          .collection('reviews')
+          .doc(reviewId)
+          .update({
+        'rating': newRating,
+        'content': contentCtrl.text.trim(),
+        'date': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  /// 삭제 다이얼로그 띄우고 Firestore 에서 삭제
+  Future<void> _showDeleteDialog(BuildContext context, String reviewId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('리뷰 삭제'),
+        content: const Text('이 리뷰를 삭제하시겠습니까?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true),  child: const Text('삭제')),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await FirebaseFirestore.instance
+          .collection('campground_reviews')
+          .doc(contentId)
+          .collection('reviews')
+          .doc(reviewId)
+          .delete();
+    }
   }
 
   Future<void> _showReportDialog(
