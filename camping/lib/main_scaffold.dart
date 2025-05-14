@@ -1,3 +1,5 @@
+// lib/main_scaffold.dart
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,8 +8,7 @@ import 'campground_data.dart';
 import 'screens/camping_home_screen.dart';
 import 'screens/bookmark_screen.dart';
 import 'screens/my_info_screen.dart';
-// 지도 페이지 위젯을 import
-import 'screens/nearby_map_page.dart';
+import 'screens/nearby_map_page.dart';  // ← 지도 페이지 위젯을 import
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -84,7 +85,10 @@ class _MainScaffoldState extends State<MainScaffold> {
         bookmarked: bookmarked,
         onToggleBookmark: toggleBookmark,
       ),
-      NearbyMapPage(),  // ← 여기에 지도 페이지 추가
+      NearbyMapPage(
+        bookmarked: bookmarked,            // ← 추가
+        onToggleBookmark: toggleBookmark,  // ← 추가
+      ),
       BookmarkScreen(
         key: ValueKey(bookmarked.length),
         bookmarked: bookmarked,
@@ -109,7 +113,7 @@ class _MainScaffoldState extends State<MainScaffold> {
             label: '홈',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.map),  // 지도 아이콘
+            icon: Icon(Icons.map),
             label: '지도',
           ),
           BottomNavigationBarItem(
