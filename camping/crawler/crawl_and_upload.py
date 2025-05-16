@@ -6,13 +6,94 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials, firestore, messaging
 import time
+import requests
+
+
+
 
 # Firebase 인증 정보 설정
 cred = credentials.Certificate("camping-2f65b-firebase-adminsdk-fbsvc-9bea14a2ff.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
+
+# 알림 전송 함수
+
+def send_fcm(token, title, body):
+    try:
+        message = messaging.Message(
+            notification=messaging.Notification(title=title, body=body),
+            token=token
+        )
+        response = messaging.send(message)
+        print(f"✅ FCM 전송 완료: {response}")
+    except Exception as e:
+        print(f"❌ FCM 전송 실패: {e}")
+
+# ✅ 알림 전송 함수 정의
+def notify_users_if_needed():
+    print("🔍 알림 설정된 사용자 조회 중...")
+    alarm_ref = db.collection("user_alarm_settings")
+    user_docs = list(alarm_ref.stream())
+    print(f"👥 사용자 수: {len(user_docs)}")
+
+    for user_doc in user_docs:
+        user_id = user_doc.id
+        print(f"\n👤 사용자 ID: {user_id}")
+
+        alarms_ref = user_doc.reference.collection("alarms").where("isNotified", "==", False)
+        alarm_docs = list(alarms_ref.stream())
+        print(f"🔢 알람 문서 수: {len(alarm_docs)}")
+
+        user_data = db.collection("users").document(user_id).get().to_dict()
+        fcm_token = user_data.get("fcmToken") if user_data else None
+        if not fcm_token:
+            print(f"⚠️ {user_id}는 fcmToken이 없어 알림 생략")
+            continue
+
+        for alarm_doc in alarm_docs:
+            alarm = alarm_doc.to_dict()
+            print(f"📄 알람 문서 내용: {alarm}")
+            camp_name = alarm.get("campName", "").strip()
+            target_date = alarm.get("date")
+
+            if not (camp_name and target_date):
+                continue
+
+            # date_str 만들기
+            if isinstance(target_date, datetime):
+                date_str = target_date.strftime("%Y-%m-%d")
+            elif hasattr(target_date, "to_datetime"):
+                date_str = target_date.to_datetime().strftime("%Y-%m-%d")
+            else:
+                date_str = str(target_date)[:10]
+
+            print(f"📅 확인 중: {camp_name} | {date_str}")
+
+            # Firestore에서 예약 데이터 조회
+            doc = db.collection("realtime_availability").document(camp_name).get()
+            if not doc.exists:
+                print(f"❌ {camp_name} 문서 없음")
+                continue
+
+            data = doc.to_dict()
+            availability_info = data.get("availability", {})
+            avail_info = availability_info.get(date_str)
+
+            print(f"📌 [디버그] 예약 정보: {avail_info}")
+
+            if avail_info and avail_info.get("available", 0) > 0:
+                avail = avail_info["available"]
+                print(f"📢 알림 대상 발견 - {camp_name} | {date_str} | 잔여 {avail}")
+                send_fcm(
+                    token=fcm_token,
+                    title="⛺ 예약 가능 알림",
+                    body=f"{camp_name} - {date_str}에 {avail}자리 예약 가능!"
+                )
+                alarm_doc.reference.update({"isNotified": True})
+
+
 
 # 차단 요소 제거 대기
 def wait_for_unblock(driver):
@@ -242,9 +323,13 @@ for park, data in campground_info.items():
 
         try:
             doc_ref = db.collection("realtime_availability").document(camp)
-            doc_ref.set(availability_data, merge=True)
+            doc_ref.set({"availability": availability_data}, merge=True)
             print(f"✅ Firestore 업로드 완료 ({len(availability_data)}일치)")
+
         except Exception as e:
             print(f"❌ Firestore 업로드 실패: {e}")
+
+# 알림 전송 함수 호출
+notify_users_if_needed()
 
 driver.quit()

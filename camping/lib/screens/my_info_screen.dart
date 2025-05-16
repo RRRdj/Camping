@@ -1,4 +1,3 @@
-// lib/screens/my_info_screen.dart (수정된 부분 포함)
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -101,6 +100,17 @@ class MyInfoScreen extends StatelessWidget {
                     );
                   },
                 ),
+
+                // ✅ 알림 관리 항목 추가
+                _buildOptionItem(
+                  context,
+                  icon: Icons.notifications_active,
+                  title: '알림 관리',
+                  onTap: () {
+                    Navigator.pushNamed(context, '/alarm_manage');
+                  },
+                ),
+
                 _buildOptionItem(
                   context,
                   icon: Icons.settings,
@@ -113,7 +123,8 @@ class MyInfoScreen extends StatelessWidget {
                     );
                   },
                 ),
-                // 회원 탈퇴 옵션 추가
+
+                // 회원 탈퇴
                 _buildOptionItem(
                   context,
                   icon: Icons.delete_forever,
@@ -138,16 +149,13 @@ class MyInfoScreen extends StatelessWidget {
                                 builder: (_) => const Center(child: CircularProgressIndicator()),
                               );
                               final uid = user.uid;
-                              // Firestore 문서 삭제
                               await FirebaseFirestore.instance.collection('users').doc(uid).delete();
-                              // Storage 이미지 삭제
                               try {
                                 await FirebaseStorage.instance
                                     .ref()
                                     .child('userProfileImages/$uid.jpg')
                                     .delete();
                               } catch (_) {}
-                              // Auth 사용자 삭제
                               try {
                                 await user.delete();
                               } on FirebaseAuthException catch (e) {

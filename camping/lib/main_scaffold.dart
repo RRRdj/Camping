@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:camping/tools/save_fcm_token.dart'; // ✅ 추가
 
 import 'campground_data.dart';
 import 'screens/camping_home_screen.dart';
@@ -28,6 +29,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   void initState() {
     super.initState();
     _loadBookmarks();
+    saveFcmToken(); // FCM 토큰 추가
   }
 
   Future<void> _loadBookmarks() async {

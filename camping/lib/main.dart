@@ -11,13 +11,20 @@ import 'screens/register_screen.dart';     // SignUpScreen
 import 'main_scaffold.dart';
 import 'screens/search_page.dart';
 import 'screens/admin_camp_list_screen.dart';
- import 'firebase_options.dart';
+import 'firebase_options.dart';
+import 'package:camping/screens/alarm_manage_screen.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-
+Future<void> requestNotificationPermission() async {
+  final status = await Permission.notification.status;
+  if (!status.isGranted) {
+    await Permission.notification.request();
+  }
+}
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
+  await requestNotificationPermission(); // 👈 여기 추가
 
 
   await initializeDateFormatting('ko');
@@ -42,6 +49,7 @@ class MyApp extends StatelessWidget {
         '/admin': (ctx) => const AdminDashboardScreen(),
         '/admin/camps': (ctx) => const AdminCampListScreen(),
         '/admin/reviews': (ctx) => const AdminReviewScreen(),
+        '/alarm_manage': (context) => const AlarmManageScreen(),
 
 
       },

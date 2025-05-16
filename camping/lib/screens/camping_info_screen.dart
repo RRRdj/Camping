@@ -101,6 +101,68 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     return urls;
   }
 
+  // ✅ 여기에 바로 아래처럼 추가해
+  Future<void> _onTapAlarm() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showMsg('로그인 후 이용해주세요.');
+      return;
+    }
+
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('user_alarm_settings')
+        .doc(user.uid)
+        .collection('alarms')
+        .get();
+
+    if (snapshot.docs.length >= 5) {
+      _showMsg('알림은 최대 5개까지 설정할 수 있어요.');
+      return;
+    }
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('알림 설정 안내'),
+        content: const Text('알림을 받고 싶은 날짜를 선택하세요.\n선택한 날짜에 빈자리가 생기면 알려드릴게요!'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
+    // 📅 날짜 선택
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 30)),
+    );
+
+    if (selectedDate == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('user_alarm_settings')
+          .doc(user.uid)
+          .collection('alarms')
+          .add({
+        'campName': widget.campName,
+        'contentId': _contentId,
+        'date': DateFormat('yyyy-MM-dd').format(selectedDate),
+        'isNotified': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      _showMsg('${DateFormat('M월 d일').format(selectedDate)} 알림이 설정되었습니다.');
+    } catch (e) {
+      _showMsg('알림 설정에 실패했습니다.');
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
@@ -194,21 +256,19 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      // 예약 현황 / 예약정보
+                      // 예약 현황 / 예약정보 / 알림 설정 버튼
                       Row(
                         children: [
                           OutlinedButton.icon(
-                            icon: const Icon(
-                                Icons.calendar_today_outlined),
+                            icon: const Icon(Icons.calendar_today_outlined),
                             label: const Text('예약 현황'),
                             onPressed: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      CampingReservationScreen(camp: {
-                                        'name': c['name']
-                                      }),
+                                  builder: (_) => CampingReservationScreen(camp: {
+                                    'name': c['name']
+                                  }),
                                 ),
                               );
                             },
@@ -230,9 +290,15 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                               );
                             },
                           ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.notifications_active_outlined),
+                            label: const Text('알림'),
+                            onPressed: _onTapAlarm,
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       // 예약하기 버튼
                       ElevatedButton(
                         onPressed: () async {
