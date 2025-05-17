@@ -3,13 +3,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:camping/tools/save_fcm_token.dart'; // ✅ 추가
 
 import 'campground_data.dart';
 import 'screens/camping_home_screen.dart';
 import 'screens/bookmark_screen.dart';
 import 'screens/my_info_screen.dart';
 import 'screens/nearby_map_page.dart';  // ← 지도 페이지 위젯을 import
+
+import 'package:camping/tools/save_fcm_token.dart'; // ✅ 추가
+
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -20,6 +22,7 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _selectedIndex = 0;
+  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));  // ← 추가
   Map<String, bool> bookmarked = {};
 
   final _auth = FirebaseAuth.instance;
@@ -83,18 +86,26 @@ class _MainScaffoldState extends State<MainScaffold> {
   Widget build(BuildContext context) {
     // 4개의 스크린 리스트: 홈, 지도, 북마크, 내 정보
     final screens = [
-      CampingHomeScreen(
-        bookmarked: bookmarked,
-        onToggleBookmark: toggleBookmark,
-      ),
-      NearbyMapPage(
+    CampingHomeScreen(
+                bookmarked: bookmarked,
+                onToggleBookmark: toggleBookmark,
+                // 홈에서 선택한 날짜를 내려줍니다.
+                selectedDate: _selectedDate,
+                onDateChanged: (newDate) {
+                setState(() => _selectedDate = newDate);
+            },
+          ),
+    NearbyMapPage(
+        key: ValueKey(_selectedDate),
         bookmarked: bookmarked,            // ← 추가
         onToggleBookmark: toggleBookmark,  // ← 추가
+        selectedDate: _selectedDate,
       ),
       BookmarkScreen(
         key: ValueKey(bookmarked.length),
         bookmarked: bookmarked,
         onToggleBookmark: toggleBookmark,
+        selectedDate: _selectedDate,
       ),
       const MyInfoScreen(),
     ];
