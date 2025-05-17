@@ -44,6 +44,9 @@
         <meta-data
             android:name="com.kakao.sdk.AppKey"
             android:value="d9d804fdec134c6b3df66f16b032ab4d" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="default_channel"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
