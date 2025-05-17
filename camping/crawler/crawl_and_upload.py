@@ -35,8 +35,17 @@ def send_fcm(token, title, body):
 def notify_users_if_needed():
     print("🔍 알림 설정된 사용자 조회 중...")
     alarm_ref = db.collection("user_alarm_settings")
-    user_docs = list(alarm_ref.stream())
-    print(f"👥 사용자 수: {len(user_docs)}")
+
+    # ② 실제로 읽어 오는 문서 ID 찍어 보기
+    docs = list(alarm_ref.stream())
+    print("▶ stream()으로 읽어 온 문서들:")
+    for d in docs:
+        print("   •", d.id)
+    print("▶ 총 개수:", len(docs))
+
+    # 이후 기존 로직에 docs를 user_docs로 사용
+    user_docs = docs
+    # 또는 바로 user_do)
 
     for user_doc in user_docs:
         user_id = user_doc.id
@@ -78,8 +87,7 @@ def notify_users_if_needed():
                 continue
 
             data = doc.to_dict()
-            availability_info = data.get("availability", {})
-            avail_info = availability_info.get(date_str)
+            avail_info = data.get(date_str, {})
 
             print(f"📌 [디버그] 예약 정보: {avail_info}")
 
@@ -275,6 +283,7 @@ campground_info = {
 
 
 
+
 for park, data in campground_info.items():
     park_xpath = data["xpath"]
     print(f"▶ 공원 클릭: {park}")
@@ -291,6 +300,7 @@ for park, data in campground_info.items():
         # 전체 자리수는 날짜 반복 전에 한 번만 수집
         try:
             total_xpath = '//*[@id="tab14-5"]/div[4]/div[1]/table[2]/thead/tr[3]/td[1]'
+
             total_sites = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.XPATH, total_xpath))
             ).text
@@ -322,8 +332,11 @@ for park, data in campground_info.items():
             }
 
         try:
+            # ↓ 이렇게 바꿔주세요 ↓
             doc_ref = db.collection("realtime_availability").document(camp)
-            doc_ref.set({"availability": availability_data}, merge=True)
+            # availability_data는 {'2025-05-17': {...}, '2025-05-18': {...}, …} 형태이므로
+            # 이대로 넘기면 루트 필드로 바로 올라갑니다.
+            doc_ref.set(availability_data)
             print(f"✅ Firestore 업로드 완료 ({len(availability_data)}일치)")
 
         except Exception as e:
@@ -331,5 +344,7 @@ for park, data in campground_info.items():
 
 # 알림 전송 함수 호출
 notify_users_if_needed()
+
+
 
 driver.quit()
