@@ -1,6 +1,6 @@
 // lib/screens/signup_screen.dart
-import 'dart:io';
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -16,18 +16,16 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  final _emailCtr = TextEditingController();
-  final _pwCtr = TextEditingController();
-  final _pwConfirmCtr = TextEditingController();
-  final _nameCtr = TextEditingController();
-  final _nickCtr = TextEditingController();
-  final _phoneCtr = TextEditingController();
-  String? _selectedGender;
-  File? _pickedImage;
-  bool _loading = false;
+  final _emailCtr        = TextEditingController();
+  final _pwCtr           = TextEditingController();
+  final _pwConfirmCtr    = TextEditingController();
+  final _nameCtr         = TextEditingController();
+  final _nickCtr         = TextEditingController();
+  final _phoneCtr        = TextEditingController();
+  File?   _pickedImage;
+  bool    _loading       = false;
 
-  /// 가입 전 미리보기용 기본 아바타
-  static const String _defaultAvatarPreview =
+  static const _defaultAvatar =
       'https://api.dicebear.com/6.x/adventurer/png?size=150';
 
   @override
@@ -54,25 +52,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
       maxWidth: 600,
       imageQuality: 80,
     );
-    if (picked != null) {
-      setState(() => _pickedImage = File(picked.path));
-    }
+    if (picked != null) setState(() => _pickedImage = File(picked.path));
   }
 
   Future<void> _signUp() async {
-    final email = _emailCtr.text.trim();
-    final pw = _pwCtr.text.trim();
-    final pwConfirm = _pwConfirmCtr.text.trim();
-    final nick = _nickCtr.text.trim();
+    final email      = _emailCtr.text.trim();
+    final pw         = _pwCtr.text.trim();
+    final pwConfirm  = _pwConfirmCtr.text.trim();
+    final nick       = _nickCtr.text.trim();
 
-    // 이메일 형식 검증
     if (!email.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('올바른 이메일을 입력해주세요.')),
       );
       return;
     }
-    // 비밀번호 일치 검증
     if (pw != pwConfirm) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('비밀번호가 일치하지 않습니다.')),
@@ -94,12 +88,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         return;
       }
 
-      // Auth 회원가입
+      // Firebase Auth 가입
       final cred = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: pw);
       final uid = cred.user!.uid;
 
-      // 프로필 사진 URL 결정
+      // 프로필 사진 업로드 or 기본 URL
       String photoUrl;
       if (_pickedImage != null) {
         final ref = FirebaseStorage.instance
@@ -109,23 +103,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
         await ref.putFile(_pickedImage!);
         photoUrl = await ref.getDownloadURL();
       } else {
-        photoUrl =
-        'https://api.dicebear.com/6.x/adventurer/png?seed=$uid&size=150';
+        photoUrl = 'https://api.dicebear.com/6.x/adventurer/png?seed=$uid&size=150';
       }
 
-      // Firestore에 유저 정보 저장
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'email': email,
-        'name': _nameCtr.text.trim(),
-        'nickname': nick,
-        'phone': _phoneCtr.text.trim(),
-        'gender': _selectedGender,
-        'photoUrl': photoUrl,
+      // Firestore에 저장
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .set({
+        'email':     email,
+        'name':      _nameCtr.text.trim(),
+        'nickname':  nick,
+        'phone':     _phoneCtr.text.trim(),
+        'photoUrl':  photoUrl,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
       if (!mounted) return;
-      // 회원가입 성공 메시지 후 로그인 화면으로 이동
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('회원가입되었습니다.')),
       );
@@ -153,93 +147,65 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            GestureDetector(
-              onTap: _pickImage,
-              child: CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.grey[300],
-                backgroundImage: _pickedImage != null
-                    ? FileImage(_pickedImage!)
-                    : const NetworkImage(_defaultAvatarPreview),
-              ),
+        child: Column(children: [
+          GestureDetector(
+            onTap: _pickImage,
+            child: CircleAvatar(
+              radius: 50,
+              backgroundColor: Colors.grey[300],
+              backgroundImage: _pickedImage != null
+                  ? FileImage(_pickedImage!)
+                  : const NetworkImage(_defaultAvatar),
             ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _emailCtr,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: '이메일',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _pwCtr,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: '비밀번호',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _pwConfirmCtr,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: '비밀번호 확인',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _nameCtr,
-              decoration: const InputDecoration(
-                labelText: '이름',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _nickCtr,
-              decoration: const InputDecoration(
-                labelText: '닉네임',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _phoneCtr,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: '전화번호',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _selectedGender,
-              decoration: const InputDecoration(
-                labelText: '성별',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: '남성', child: Text('남성')),
-                DropdownMenuItem(value: '여성', child: Text('여성')),
-                DropdownMenuItem(value: '기타', child: Text('기타')),
-              ],
-              onChanged: (v) => setState(() => _selectedGender = v),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _signUp,
-              child: const Text('회원가입'),
-              style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 48)),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _emailCtr,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+                labelText: '이메일', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _pwCtr,
+            obscureText: true,
+            decoration: const InputDecoration(
+                labelText: '비밀번호', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _pwConfirmCtr,
+            obscureText: true,
+            decoration: const InputDecoration(
+                labelText: '비밀번호 확인', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _nameCtr,
+            decoration: const InputDecoration(
+                labelText: '이름', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _nickCtr,
+            decoration: const InputDecoration(
+                labelText: '닉네임', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _phoneCtr,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+                labelText: '전화번호', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton(
+            onPressed: _signUp,
+            child: const Text('회원가입'),
+            style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48)),
+          ),
+        ]),
       ),
     );
   }

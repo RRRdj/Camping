@@ -1,4 +1,5 @@
 // lib/screens/admin_camp_management.dart
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -35,14 +36,16 @@ class AdminCampListScreen extends StatelessWidget {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // 수정 아이콘을 먼저 배치
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.grey),
                         onPressed: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => AdminCampFormScreen(docId: doc.id, existingData: data),
+                              builder: (_) => AdminCampFormScreen(
+                                docId: doc.id,
+                                existingData: data,
+                              ),
                             ),
                           );
                         },
@@ -56,14 +59,25 @@ class AdminCampListScreen extends StatelessWidget {
                               title: const Text('삭제 확인'),
                               content: const Text('정말 삭제하시겠습니까?'),
                               actions: [
-                                TextButton(onPressed: () => Navigator.pop(ctx3, false), child: const Text('취소')),
-                                TextButton(onPressed: () => Navigator.pop(ctx3, true), child: const Text('삭제', style: TextStyle(color: Colors.red))),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx3, false),
+                                  child: const Text('취소'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx3, true),
+                                  child: const Text('삭제', style: TextStyle(color: Colors.red)),
+                                ),
                               ],
                             ),
                           );
                           if (ok == true) {
-                            await FirebaseFirestore.instance.collection('campgrounds').doc(doc.id).delete();
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('삭제되었습니다.')));
+                            await FirebaseFirestore.instance
+                                .collection('campgrounds')
+                                .doc(doc.id)
+                                .delete();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('삭제되었습니다.')),
+                            );
                           }
                         },
                       ),
@@ -89,7 +103,7 @@ class AdminCampListScreen extends StatelessWidget {
   }
 }
 
-/// 캠핑장 등록/수정 폼 (available/total 필드 제외)
+/// 캠핑장 등록/수정 폼 (available/total 제외)
 class AdminCampFormScreen extends StatefulWidget {
   final String? docId;
   final Map<String, dynamic>? existingData;
@@ -110,6 +124,9 @@ class _AdminCampFormScreenState extends State<AdminCampFormScreen> {
   late TextEditingController _inDutyCtr;
   late TextEditingController _lctClCtr;
   late TextEditingController _lineIntroCtr;
+  late TextEditingController _introCtr;
+  late TextEditingController _featureNmCtr;
+  late TextEditingController _reservationWarningCtr;
   late TextEditingController _resveUrlCtr;
   late TextEditingController _telCtr;
 
@@ -117,16 +134,19 @@ class _AdminCampFormScreenState extends State<AdminCampFormScreen> {
   void initState() {
     super.initState();
     final d = widget.existingData;
-    _nameCtr = TextEditingController(text: d?['name']);
-    _locationCtr = TextEditingController(text: d?['location']);
-    _typeCtr = TextEditingController(text: d?['type']);
-    _contentIdCtr = TextEditingController(text: d?['contentId']);
-    _firstImageUrlCtr = TextEditingController(text: d?['firstImageUrl']);
-    _inDutyCtr = TextEditingController(text: d?['inDuty']);
-    _lctClCtr = TextEditingController(text: d?['lctCl']);
-    _lineIntroCtr = TextEditingController(text: d?['lineIntro']);
-    _resveUrlCtr = TextEditingController(text: d?['resveUrl']);
-    _telCtr = TextEditingController(text: d?['tel']);
+    _nameCtr            = TextEditingController(text: d?['name']);
+    _locationCtr        = TextEditingController(text: d?['location']);
+    _typeCtr            = TextEditingController(text: d?['type']);
+    _contentIdCtr       = TextEditingController(text: d?['contentId']);
+    _firstImageUrlCtr   = TextEditingController(text: d?['firstImageUrl']);
+    _inDutyCtr          = TextEditingController(text: d?['inDuty']);
+    _lctClCtr           = TextEditingController(text: d?['lctCl']);
+    _lineIntroCtr       = TextEditingController(text: d?['lineIntro']);
+    _introCtr           = TextEditingController(text: d?['intro']);
+    _featureNmCtr       = TextEditingController(text: d?['featureNm']);
+    _reservationWarningCtr = TextEditingController(text: d?['reservation_warning']);
+    _resveUrlCtr        = TextEditingController(text: d?['resveUrl']);
+    _telCtr             = TextEditingController(text: d?['tel']);
   }
 
   @override
@@ -139,6 +159,9 @@ class _AdminCampFormScreenState extends State<AdminCampFormScreen> {
     _inDutyCtr.dispose();
     _lctClCtr.dispose();
     _lineIntroCtr.dispose();
+    _introCtr.dispose();
+    _featureNmCtr.dispose();
+    _reservationWarningCtr.dispose();
     _resveUrlCtr.dispose();
     _telCtr.dispose();
     super.dispose();
@@ -155,6 +178,9 @@ class _AdminCampFormScreenState extends State<AdminCampFormScreen> {
       'inDuty': _inDutyCtr.text.trim(),
       'lctCl': _lctClCtr.text.trim(),
       'lineIntro': _lineIntroCtr.text.trim(),
+      'intro': _introCtr.text.trim(),
+      'featureNm': _featureNmCtr.text.trim(),
+      'reservation_warning': _reservationWarningCtr.text.trim(),
       'resveUrl': _resveUrlCtr.text.trim(),
       'tel': _telCtr.text.trim(),
       'createdAt': FieldValue.serverTimestamp(),
@@ -174,7 +200,9 @@ class _AdminCampFormScreenState extends State<AdminCampFormScreen> {
   Widget build(BuildContext context) {
     final isEdit = widget.docId != null;
     return Scaffold(
-      appBar: AppBar(title: Text(isEdit ? '캠핑장 수정' : '캠핑장 등록')),
+      appBar: AppBar(
+        title: Text(isEdit ? '캠핑장 수정' : '캠핑장 등록'),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -189,10 +217,13 @@ class _AdminCampFormScreenState extends State<AdminCampFormScreen> {
                 {'label': '이미지 URL', 'ctrl': _firstImageUrlCtr},
                 {'label': '운영기관', 'ctrl': _inDutyCtr},
                 {'label': '환경', 'ctrl': _lctClCtr},
-                {'label': '설명', 'ctrl': _lineIntroCtr},
+                {'label': '간략 설명 (lineIntro)', 'ctrl': _lineIntroCtr},
+                {'label': '상세 설명 (intro)', 'ctrl': _introCtr},
+                {'label': '특징 설명 (featureNm)', 'ctrl': _featureNmCtr},
+                {'label': '예약 주의사항', 'ctrl': _reservationWarningCtr},
                 {'label': '예약 URL', 'ctrl': _resveUrlCtr},
                 {'label': '전화번호', 'ctrl': _telCtr},
-              ])
+              ]) ...[
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: TextFormField(
@@ -204,11 +235,13 @@ class _AdminCampFormScreenState extends State<AdminCampFormScreen> {
                     validator: (v) => (v == null || v.isEmpty) ? '필수 입력' : null,
                   ),
                 ),
+              ],
               ElevatedButton(
                 onPressed: _save,
                 child: Text(isEdit ? '수정 완료' : '등록 완료'),
                 style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48)),
+                  minimumSize: const Size(double.infinity, 48),
+                ),
               ),
             ],
           ),

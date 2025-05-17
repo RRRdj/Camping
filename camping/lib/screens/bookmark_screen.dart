@@ -7,11 +7,13 @@ import 'camping_info_screen.dart';
 class BookmarkScreen extends StatefulWidget {
   final Map<String, bool> bookmarked;
   final void Function(String name) onToggleBookmark;
+  final DateTime selectedDate;
 
   const BookmarkScreen({
     super.key,
     required this.bookmarked,
     required this.onToggleBookmark,
+    required this.selectedDate,       // ← 생성자에 추가
   });
 
   @override
@@ -19,7 +21,7 @@ class BookmarkScreen extends StatefulWidget {
 }
 
 class _BookmarkScreenState extends State<BookmarkScreen> {
-  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
+  //DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +33,7 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
       return const Center(child: Text('북마크한 캠핑장이 없습니다.'));
     }
 
-    final key = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    final key = DateFormat('yyyy-MM-dd').format(widget.selectedDate);
 
     return ListView.builder(
       itemCount: bookmarkedCamps.length,
@@ -104,7 +106,7 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                         ],
                       ),
                       trailing: IconButton(
-                        icon: const Icon(Icons.favorite, color: Colors.red),
+                        icon: const Icon(Icons.bookmark, color: Colors.red),
                         onPressed: () {
                           widget.onToggleBookmark(name);
                           setState(() {});
@@ -121,6 +123,7 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                               isBookmarked:
                               widget.bookmarked[name] == true,
                               onToggleBookmark: widget.onToggleBookmark,
+                              selectedDate: widget.selectedDate,
                             ),
                           ),
                         );

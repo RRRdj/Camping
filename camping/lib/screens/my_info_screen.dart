@@ -1,3 +1,4 @@
+// lib/screens/my_info_screen.dart (수정된 부분 포함)
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -5,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:camping/screens/edit_profile_screen.dart';
 import 'package:camping/screens/setting_screen.dart';
 import 'package:camping/screens/my_review_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MyInfoScreen extends StatelessWidget {
   const MyInfoScreen({Key? key}) : super(key: key);
@@ -100,7 +102,6 @@ class MyInfoScreen extends StatelessWidget {
                     );
                   },
                 ),
-
                 // ✅ 알림 관리 항목 추가
                 _buildOptionItem(
                   context,
@@ -110,7 +111,6 @@ class MyInfoScreen extends StatelessWidget {
                     Navigator.pushNamed(context, '/alarm_manage');
                   },
                 ),
-
                 _buildOptionItem(
                   context,
                   icon: Icons.settings,
@@ -123,8 +123,7 @@ class MyInfoScreen extends StatelessWidget {
                     );
                   },
                 ),
-
-                // 회원 탈퇴
+                // 회원 탈퇴 옵션 추가
                 _buildOptionItem(
                   context,
                   icon: Icons.delete_forever,
@@ -149,13 +148,16 @@ class MyInfoScreen extends StatelessWidget {
                                 builder: (_) => const Center(child: CircularProgressIndicator()),
                               );
                               final uid = user.uid;
+                              // Firestore 문서 삭제
                               await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+                              // Storage 이미지 삭제
                               try {
                                 await FirebaseStorage.instance
                                     .ref()
                                     .child('userProfileImages/$uid.jpg')
                                     .delete();
                               } catch (_) {}
+                              // Auth 사용자 삭제
                               try {
                                 await user.delete();
                               } on FirebaseAuthException catch (e) {
@@ -182,12 +184,22 @@ class MyInfoScreen extends StatelessWidget {
                     );
                   },
                 ),
+                const Divider(height: 32),
                 _buildOptionItem(
                   context,
                   icon: Icons.logout,
                   title: '로그아웃',
-                  onTap: () {
-                    FirebaseAuth.instance.signOut();
+                  onTap: () async {
+                    // 1) SharedPreferences에서 자동 로그인 정보 삭제
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.remove('autoLogin');
+                    await prefs.remove('savedEmail');
+                    await prefs.remove('savedPw');
+
+                    // 2) Firebase 로그아웃
+                    await FirebaseAuth.instance.signOut();
+
+                    // 3) 로그인 화면으로 이동
                     Navigator.pushReplacementNamed(context, '/');
                   },
                 ),
@@ -198,7 +210,6 @@ class MyInfoScreen extends StatelessWidget {
       ),
     );
   }
-
   Widget _buildOptionItem(
       BuildContext context, {
         required IconData icon,

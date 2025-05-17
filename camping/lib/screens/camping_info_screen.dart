@@ -11,13 +11,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:camping/screens/camping_reservation_screen.dart';
 import 'package:camping/screens/reservation_info_screen.dart';
-
+import 'dart:ui' as ui;
 class CampingInfoScreen extends StatefulWidget {
   final String campName;
   final int available;
   final int total;
   final bool isBookmarked;
   final void Function(String campName) onToggleBookmark;
+  final DateTime selectedDate;
 
   const CampingInfoScreen({
     Key? key,
@@ -26,6 +27,7 @@ class CampingInfoScreen extends StatefulWidget {
     required this.total,
     required this.isBookmarked,
     required this.onToggleBookmark,
+    required this.selectedDate,
   }) : super(key: key);
 
   @override
@@ -100,22 +102,24 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     }
     return urls;
   }
-
-  // ✅ 여기에 바로 아래처럼 추가해
   Future<void> _onTapAlarm() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       _showMsg('로그인 후 이용해주세요.');
       return;
     }
-
-
+    await FirebaseFirestore.instance
+         .collection('user_alarm_settings')
+         .doc(user.uid)
+         .set(
+           { 'lastAlarmAt': FieldValue.serverTimestamp() },
+          SetOptions(merge: true),
+         );
     final snapshot = await FirebaseFirestore.instance
         .collection('user_alarm_settings')
         .doc(user.uid)
         .collection('alarms')
         .get();
-
     if (snapshot.docs.length >= 5) {
       _showMsg('알림은 최대 5개까지 설정할 수 있어요.');
       return;
@@ -140,9 +144,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 30)),
     );
-
     if (selectedDate == null) return;
-
     try {
       await FirebaseFirestore.instance
           .collection('user_alarm_settings')
@@ -155,13 +157,11 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
         'isNotified': false,
         'createdAt': FieldValue.serverTimestamp(),
       });
-
       _showMsg('${DateFormat('M월 d일').format(selectedDate)} 알림이 설정되었습니다.');
     } catch (e) {
       _showMsg('알림 설정에 실패했습니다.');
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -179,10 +179,9 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
               return const Center(
                   child: Text('캠핑장 정보를 불러올 수 없습니다.'));
             }
-
             final c = snap.data!.data()!;
             final dateLabel = DateFormat('MM월 dd일')
-                .format(DateTime.now().add(const Duration(days: 1)));
+                .format(widget.selectedDate);
             final isAvail = widget.available > 0;
             final amenities =
                 (c['amenities'] as List<dynamic>?)?.cast<String>() ?? [];
@@ -233,8 +232,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                           IconButton(
                             icon: Icon(
                               _bookmarked
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
+                                  ? Icons.bookmark
+                                  : Icons.bookmark_border,
                               color: _bookmarked ? Colors.red : Colors.grey,
                             ),
                             onPressed: () {
@@ -256,7 +255,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      // 예약 현황 / 예약정보 / 알림 설정 버튼
+                      // 예약 현황 / 예약정보 /알림 설정 버튼
                       Row(
                         children: [
                           OutlinedButton.icon(
@@ -266,12 +265,17 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => CampingReservationScreen(camp: {
-                                    'name': c['name']
-                                  }),
+                                  builder: (_) =>
+                                      CampingReservationScreen(camp: {
+                                        'name': c['name']
+                                      }),
                                 ),
                               );
                             },
+
+
+
+
                           ),
                           const SizedBox(width: 8),
                           OutlinedButton.icon(
@@ -285,6 +289,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                                   settings: RouteSettings(arguments: {
                                     'campName': c['name'],
                                     'contentId': _contentId,
+
                                   }),
                                 ),
                               );
@@ -296,6 +301,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                             label: const Text('알림'),
                             onPressed: _onTapAlarm,
                           ),
+
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -311,7 +317,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                             url = c['resveUrl'];
                           }
                           if (url == null || url.isEmpty) {
-                            _showMsg('예약 페이지가 없습니다.\n전화로 문의하세요: ${c['tel'] ?? '-'}');
+                            _showMsg(
+                                '예약 페이지가 없습니다.\n전화로 문의하세요: ${c['tel'] ?? '-'}');
                             return;
                           }
                           final uri = Uri.parse(url);
@@ -334,7 +341,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         color: Colors.teal,
                       ),
 
-                      // ─── Kakao Map InAppWebView ───
+                      // Kakao Map
                       const SizedBox(height: 8),
                       SizedBox(
                         height: 200,
@@ -346,7 +353,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                               c['mapX'] as String? ?? '') ??
                               0.0;
 
-                          // document.write 훅킹 + HTTPS 업그레이드 + Kakao SDK 로드
                           final html = '''
 <!DOCTYPE html>
 <html>
@@ -379,45 +385,33 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
       document.getElementById('map'),
       { center: coord, level: 3 }
     );
-    const imageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png';
-    const imageSize = new kakao.maps.Size(24,35);
-    const imageOption = { offset: new kakao.maps.Point(12,35) };
-    const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
-    const marker = new kakao.maps.Marker({
-      position: coord,
-      image: markerImage
-    });
+    const marker = new kakao.maps.Marker({ position: coord });
     marker.setMap(map);
-
-    // ✅ 지도 렌더링이 끝난 뒤에 다시 중앙으로
     kakao.maps.event.addListener(map, 'idle', function() {
       map.setCenter(coord);
     });
   </script>
 </body>
 </html>
-
 ''';
 
                           return InAppWebView(
-                            initialData: InAppWebViewInitialData(data: html),
+                            initialData:
+                            InAppWebViewInitialData(data: html),
                             initialOptions: InAppWebViewGroupOptions(
                               android: AndroidInAppWebViewOptions(
-                                mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
-
+                                mixedContentMode:
+                                AndroidMixedContentMode
+                                    .MIXED_CONTENT_ALWAYS_ALLOW,
                               ),
                               ios: IOSInAppWebViewOptions(
                                 allowsInlineMediaPlayback: true,
                               ),
                             ),
-                            onWebViewCreated: (controller) {
-                              // 필요하다면 추가 로직
-                            },
                           );
                         }),
                       ),
                       const SizedBox(height: 12),
-                      // ─── Map 끝 ───
 
                       _InfoRow(
                         label: '전화번호',
@@ -440,21 +434,77 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                           color: Colors.brown,
                         ),
 
-
-
                       const Divider(height: 32),
                       _AmenitySection(amenities: amenities),
+
+                      // 상세 정보
+                      // ─── 상세 정보 ───
                       const Divider(height: 32),
-
-
-
-                      const Text('상세 정보',
-                          style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold)),
+                      Text(
+                        '기본 정보',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
                       const SizedBox(height: 8),
-                      const Text(
-                          '이곳에 해당 야영장의 시설 설명, 이용 요금, 부가 서비스 등을 표시할 수 있습니다.'),
+
+// lineIntro, intro, featureNm 중 하나라도 있으면 출력, 아니면 안내문
+                      if (((c['lineIntro'] as String?)?.isNotEmpty == true) ||
+                          ((c['intro']     as String?)?.isNotEmpty == true) ||
+                          ((c['featureNm'] as String?)?.isNotEmpty == true)) ...[
+                        if ((c['lineIntro'] as String?)?.isNotEmpty == true)
+                          ExpandableText(
+                            c['lineIntro'] as String,
+                            style: TextStyle(fontSize: 16, height: 1.5),
+                            trimLines: 3,
+                          ),
+                        const SizedBox(height: 4),
+                        ExpandableText(
+                          (c['intro'] as String?)?.isNotEmpty == true
+                              ? c['intro'] as String
+                              : (c['featureNm'] as String? ?? ''),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[800],
+                            height: 1.5,
+                          ),
+                          trimLines: 5,
+                        ),
+                      ] else ...[
+                        Text(
+                          '자세한 정보를 찾으시려면 예약현황이나 사이트를 통해서 확인하세요.',
+                          style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+
+
+                      // 야영장 사이트 버튼
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final siteUrl = c['site'] as String?;
+                          if (siteUrl != null && siteUrl.isNotEmpty) {
+                            final uri = Uri.parse(siteUrl);
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri,
+                                  mode: LaunchMode.externalApplication);
+                            } else {
+                              _showMsg('사이트를 열 수 없습니다.');
+                            }
+                          } else {
+                            _showMsg('사이트 정보가 없습니다.');
+                          }
+                        },
+                        child: const Text('관련 사이트',
+                            style: TextStyle(color: Colors.white)),
+                      ),
                       const Divider(height: 32),
+
+                      // ─── 리뷰 작성 폼 ───
                       _ReviewForm(
                         txtCtr: _txtCtr,
                         rating: _rating,
@@ -463,6 +513,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         userNickname: _userNickname,
                       ),
                       const Divider(height: 32),
+
+                      // ─── 리뷰 목록 ───
                       _ReviewList(contentId: _contentId ?? ''),
                     ]),
                   ),
@@ -578,7 +630,6 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-
 // --- 편의시설 표시용 위젯 ---
 class _AmenitySection extends StatelessWidget {
   final List<String> amenities;
@@ -611,14 +662,14 @@ class _AmenitySection extends StatelessWidget {
   }
 }
 
-
 // --- 리뷰 작성 폼 위젯 ---
 class _ReviewForm extends StatelessWidget {
   final int rating;
   final ValueChanged<int> onRating;
   final TextEditingController txtCtr;
   final VoidCallback onSubmit;
-  final String? userNickname;
+  final String?
+  userNickname;
 
   const _ReviewForm({
     required this.rating,
@@ -676,7 +727,7 @@ class _ReviewForm extends StatelessWidget {
   );
 }
 
-// --- 리뷰 리스트 표시 위젯 ---
+// --- 리뷰 목록 표시 위젯 ---
 class _ReviewList extends StatelessWidget {
   final String contentId;
   const _ReviewList({required this.contentId});
@@ -705,34 +756,44 @@ class _ReviewList extends StatelessWidget {
           children: docs.map((doc) {
             final data = doc.data()! as Map<String, dynamic>;
             final reviewerId = data['userId'] as String? ?? '';
-            final reviewId   = doc.id;
-            final nick       = data['nickname'] as String? ?? '익명';
-            final date       = data['date'] != null
-                ? (data['date'] as Timestamp).toDate().toString().substring(0, 10)
+            final reviewId = doc.id;
+            final nick = data['nickname'] as String? ?? '익명';
+            final date = data['date'] != null
+                ? (data['date'] as Timestamp)
+                .toDate()
+                .toString()
+                .substring(0, 10)
                 : '';
-            final rating     = data['rating']   as int?    ?? 5;
-            final content    = data['content']  as String? ?? '';
+            final rating = data['rating'] as int? ?? 5;
+            final content = data['content'] as String? ?? '';
 
             List<Widget> actionButtons = [];
-            if (currentUser != null && reviewerId == currentUser.uid) {
+            if (currentUser != null &&
+                reviewerId == currentUser.uid) {
               actionButtons.addAll([
                 IconButton(
-                  icon: const Icon(Icons.edit, size: 18, color: Colors.teal),
+                  icon: const Icon(Icons.edit,
+                      size: 18, color: Colors.teal),
                   tooltip: '수정',
-                  onPressed: () => _showEditDialog(context, reviewId, rating, content),
+                  onPressed: () => _showEditDialog(
+                      context, reviewId, rating, content),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                  icon: const Icon(Icons.delete,
+                      size: 18, color: Colors.red),
                   tooltip: '삭제',
-                  onPressed: () => _showDeleteDialog(context, reviewId),
+                  onPressed: () =>
+                      _showDeleteDialog(context, reviewId),
                 ),
               ]);
             } else if (currentUser != null) {
               actionButtons.add(
                 IconButton(
-                  icon: const Icon(Icons.flag, size: 18, color: Colors.redAccent),
+                  icon: const Icon(Icons.flag,
+                      size: 18, color: Colors.redAccent),
                   tooltip: '신고',
-                  onPressed: () => _showReportDialog(context, reviewId, reviewerId),
+                  onPressed: () => _showReportDialog(
+                      context, reviewId, reviewerId),
                 ),
               );
             }
@@ -742,9 +803,13 @@ class _ReviewList extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(nick, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(nick,
+                        style:
+                        const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(width: 8),
-                    Text(date, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    Text(date,
+                        style: const TextStyle(
+                            color: Colors.grey, fontSize: 12)),
                     const Spacer(),
                     ...actionButtons,
                   ],
@@ -754,7 +819,9 @@ class _ReviewList extends StatelessWidget {
                   children: List.generate(
                     5,
                         (i) => Icon(
-                      i < rating ? Icons.star : Icons.star_border,
+                      i < rating
+                          ? Icons.star
+                          : Icons.star_border,
                       color: Colors.green,
                       size: 16,
                     ),
@@ -922,5 +989,79 @@ class _ReviewList extends StatelessWidget {
 
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('신고가 접수되었습니다.')));
+  }
+}
+class ExpandableText extends StatefulWidget {
+  final String text;
+  final TextStyle? style;
+  final int trimLines;
+
+  const ExpandableText(
+      this.text, {
+        Key? key,
+        this.style,
+        this.trimLines = 3,
+      }) : super(key: key);
+
+  @override
+  State<ExpandableText> createState() => _ExpandableTextState();
+}
+
+class _ExpandableTextState extends State<ExpandableText> {
+  bool _expanded = false;
+  late String _firstPart;
+  late String _remainingPart;
+  bool _needTrim = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkTrim());
+  }
+
+  void _checkTrim() {
+    final span = TextSpan(text: widget.text, style: widget.style);
+    final tp = TextPainter(
+      text: span,
+      maxLines: widget.trimLines,
+      textDirection: ui.TextDirection.ltr,
+    );
+    tp.layout(maxWidth: MediaQuery.of(context).size.width - 32);
+    setState(() {
+      _needTrim = tp.didExceedMaxLines;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_needTrim) {
+      return Text(widget.text, style: widget.style, textAlign: TextAlign.start);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.text,
+          style: widget.style,
+          maxLines: _expanded ? null : widget.trimLines,
+          overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+          textAlign: TextAlign.start,
+        ),
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              _expanded ? '간략히' : '더보기',
+              style: TextStyle(
+                color: Colors.teal,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

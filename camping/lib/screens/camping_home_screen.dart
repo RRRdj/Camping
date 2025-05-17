@@ -7,11 +7,16 @@ import 'camping_info_screen.dart';
 class CampingHomeScreen extends StatefulWidget {
   final Map<String, bool> bookmarked;
   final void Function(String name) onToggleBookmark;
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onDateChanged;
 
   const CampingHomeScreen({
     Key? key,
     required this.bookmarked,
     required this.onToggleBookmark,
+    required this.selectedDate,
+    required this.onDateChanged,
+
   }) : super(key: key);
 
   @override
@@ -19,7 +24,7 @@ class CampingHomeScreen extends StatefulWidget {
 }
 
 class _CampingHomeScreenState extends State<CampingHomeScreen> {
-  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
+  //DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   String? _appliedKeyword;
   String? _appliedRegion;
   String? _appliedType;
@@ -202,8 +207,8 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dateLabel = DateFormat('MM월 dd일').format(_selectedDate);
-    final dateKey = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    final dateLabel = DateFormat('MM월 dd일').format(widget.selectedDate);
+    final dateKey   = DateFormat('yyyy-MM-dd').format(widget.selectedDate);
 
     return Scaffold(
       appBar: AppBar(
@@ -225,11 +230,11 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                 final now = DateTime.now();
                 final picked = await showDatePicker(
                   context: context,
-                  initialDate: _selectedDate,
+                  initialDate: widget.selectedDate,
                   firstDate: now,
                   lastDate: now.add(const Duration(days: 14)),
                 );
-                if (picked != null) setState(() => _selectedDate = picked);
+                if (picked != null) widget.onDateChanged(picked);
               },
               child: Chip(
                 avatar:
@@ -368,6 +373,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                       true,
                                   onToggleBookmark:
                                   widget.onToggleBookmark,
+                                  selectedDate: widget.selectedDate,
                                 ),
                               ),
                             ),
@@ -433,8 +439,8 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                       icon: Icon(
                                         (widget.bookmarked[c['name']] ??
                                             false)
-                                            ? Icons.favorite
-                                            : Icons.favorite_border,
+                                            ? Icons.bookmark
+                                            : Icons.bookmark_border,
                                         color: (widget.bookmarked[
                                         c['name']] ??
                                             false)

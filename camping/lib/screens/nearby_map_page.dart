@@ -12,11 +12,12 @@ import 'camping_info_screen.dart';
 class NearbyMapPage extends StatefulWidget {
   final Map<String, bool> bookmarked;
   final void Function(String campName) onToggleBookmark;
-
+  final DateTime selectedDate;
   const NearbyMapPage({
     Key? key,
     required this.bookmarked,
     required this.onToggleBookmark,
+    required this.selectedDate,
   }) : super(key: key);
 
   @override
@@ -124,7 +125,7 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
     };
 
     final tomorrow = DateTime.now().add(const Duration(days: 1));
-    final dateKey = DateFormat('yyyy-MM-dd').format(tomorrow);
+    final dateKey = DateFormat('yyyy-MM-dd').format(widget.selectedDate);
 
     camps = camps.map((c) {
       final doc = rtMap[c.name];
@@ -161,7 +162,7 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
     if (_lat == null || _lng == null) return;
     final buf = StringBuffer()..write(_currentLocationJs)..writeln();
     for (var c in _filteredCamps) {
-      buf.writeln(c.toMarkerJs());
+      buf.writeln(c.toMarkerJs(widget.selectedDate));
     }
     final markersJs = buf.toString();
 
@@ -244,6 +245,7 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                             total: camp.total,
                             isBookmarked: widget.bookmarked[cid] ?? false,
                             onToggleBookmark: widget.onToggleBookmark,
+                            selectedDate: widget.selectedDate,
                           ),
                         ),
                       );
@@ -306,7 +308,7 @@ class Camp {
     );
   }
 
-  String toMarkerJs() => """
+  String toMarkerJs(DateTime selectedDate) => """
 (function(){
   var coord = new kakao.maps.LatLng(${lat}, ${lng});
   var markerImage = new kakao.maps.MarkerImage(
@@ -318,7 +320,7 @@ class Camp {
   marker.setMap(map);
 
   var d = new Date(); d.setDate(d.getDate()+1);
-  var month = d.getMonth()+1, day = d.getDate();
+  var month = ${selectedDate.month}, day = ${selectedDate.day};
   var avail = ${available}, tot = ${total};
   var statusText = avail>0?'예약가능':'마감';
   var infoHtml = '<div style="padding:8px;background:#fff;border-radius:8px;'
@@ -328,7 +330,7 @@ class Camp {
                + '<span style="color:#555;display:block;margin-bottom:6px;">${region}</span>'
                + '<span style="color:'+ (avail>0?'#2ecc71':'#e74c3c')
                + ';display:block;font-weight:bold;margin-bottom:8px;">'
-               + month+'월 '+day+'일 '+statusText+' ('+avail+'/'+tot+')</span>'
+               +  month+'월 '+day+'일 '+statusText+' ('+avail+'/'+tot+')</span>'
                + '<button style="width:100%;padding:6px 0;border:none;'
                + 'background:#007aff;color:#fff;border-radius:4px;cursor:pointer;"'
                + " onclick=\\"window.flutter_inappwebview.callHandler('detail','${contentId}')\\">"
