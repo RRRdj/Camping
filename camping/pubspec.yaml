@@ -43,7 +43,7 @@ dependencies:
 
   # Storage → core 3.x 와 호환되는 12.x 대
   firebase_storage: ^12.4.5
-
+  shared_preferences: ^2.0.15
   intl: ^0.18.1
   kakao_map_plugin: ^0.3.6
   kakao_flutter_sdk_share: ^1.9.5
@@ -52,13 +52,12 @@ dependencies:
 
   geolocator: ^9.0.2
   geoflutterfire_plus: ^0.0.32
-
+  firebase_messaging: ^15.2.5
 
   url_launcher: ^6.1.7
   path_provider: ^2.0.17
   flutter_inappwebview: ^6.0.0
   image_picker: ^0.8.7+4
-  firebase_messaging: ^15.2.5
 
 
 
