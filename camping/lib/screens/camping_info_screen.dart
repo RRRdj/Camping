@@ -422,6 +422,12 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                       ),
                       _InfoRow(
                         label: '캠핑장 유형',
+                        value: c['type'] ?? '정보없음',
+                        icon: Icons.circle,
+                        color: Colors.teal,
+                      ),
+                      _InfoRow(
+                        label: '캠핑장 구분',
                         value: c['inDuty'] ?? '정보없음',
                         icon: Icons.event_note,
                         color: Colors.blueGrey,
