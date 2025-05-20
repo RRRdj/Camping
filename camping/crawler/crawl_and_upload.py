@@ -51,6 +51,13 @@ def notify_users_if_needed():
         user_id = user_doc.id
         print(f"\n👤 사용자 ID: {user_id}")
 
+        # ✅ 알림 설정 확인 (추가)
+        pref_doc = user_doc.reference.collection("settings").document("preferences").get()
+        prefs = pref_doc.to_dict()
+        if not prefs or not prefs.get("push_enabled", True):  # 기본값 True
+            print(f"🔕 알림 OFF - {user_id}")
+            continue  # 알림 설정 안된 사용자 건너뜀
+
         alarms_ref = user_doc.reference.collection("alarms").where("isNotified", "==", False)
         alarm_docs = list(alarms_ref.stream())
         print(f"🔢 알람 문서 수: {len(alarm_docs)}")
