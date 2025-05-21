@@ -54,47 +54,58 @@ class Camp {
     );
   }
 
-  /// 카카오맵 마커 + 인포윈도우 JS
+  /// 카카오맵 마커 + 인포윈도우 JS ― 4배 확대, 핀 가리지 않기
   String toMarkerJs(DateTime selectedDate) {
-    final month = selectedDate.month;
-    final day = selectedDate.day;
-    final status = available > 0 ? '예약가능' : '마감';
-    final colorHex = available > 0 ? '#2ecc71' : '#e74c3c';
+    final m = selectedDate.month;
+    final d = selectedDate.day;
+    final ok = available > 0;
+    final col = ok ? '#2ecc71' : '#e74c3c';
+    final tag = ok ? '예약가능' : '마감';
 
-    // ← ① HTML을 먼저 만듭니다.
-    final infoHtml = '''
-<div style="padding:8px;max-width:200px;font-family:sans-serif;">
-  <strong style="font-size:14px;display:block;margin-bottom:4px;">$name</strong>
-  <span style="font-size:12px;color:#555;display:block;margin-bottom:4px;">$region</span>
-  <span style="font-size:12px;color:$colorHex;font-weight:bold;display:block;margin-bottom:8px;">
-    ${month}월 ${day}일 $status ($available/$total)
+    /* ① 3배 확대 + origin = bottom center  */
+    final html = '''
+<div style="
+  transform:scale(3);
+  transform-origin:bottom center;   /* ⬅️ 확대 기준점 */
+  padding:8px;
+  max-width:200px;
+  font-family:sans-serif;
+  background:#fff;
+  box-shadow:0 2px 6px rgba(0,0,0,.3);
+  border-radius:4px;">
+  <strong style="font-size:14px; display:block; margin-bottom:4px;">$name</strong>
+  <span style="font-size:12px; color:#555; display:block; margin-bottom:4px;">$region</span>
+  <span style="font-size:12px; color:$col; font-weight:bold; display:block; margin-bottom:8px;">
+    ${m}월&nbsp;${d}일&nbsp;$tag&nbsp;($available/$total)
   </span>
   <button
-    style="width:100%;padding:6px;border:none;background:#007aff;color:#fff;border-radius:4px;cursor:pointer;"
+    style="width:100%; padding:6px; border:none; background:#007aff; color:#fff;
+           border-radius:4px; cursor:pointer;"
     onclick="window.flutter_inappwebview.callHandler('detail','$contentId')">
     상세정보
   </button>
 </div>
 ''';
 
-    // ← ② jsonEncode 로 JS 안전 문자열로 변환
-    final encoded = jsonEncode(infoHtml);
+    final encoded = jsonEncode(html);
 
-    // ← ③ 최종 JS 반환
+    /* ② 마커 + 인포윈도우 */
     return """
 (function(){
-  var coord = new kakao.maps.LatLng($lat, $lng);
-  var markerImage = new kakao.maps.MarkerImage(
-    'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png',
-    new kakao.maps.Size(24,35),
-    { offset: new kakao.maps.Point(12,35) }
-  );
-  var marker = new kakao.maps.Marker({ position: coord, image: markerImage });
+  var pos = new kakao.maps.LatLng($lat, $lng);
+  var marker = new kakao.maps.Marker({
+    position: pos,
+    image: new kakao.maps.MarkerImage(
+      'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png',
+      new kakao.maps.Size(72,105),
+      { offset: new kakao.maps.Point(36,105) }
+    )
+  });
   marker.setMap(map);
 
-  var infoWindow = new kakao.maps.InfoWindow({ content: $encoded });
+  var info = new kakao.maps.InfoWindow({ content: $encoded });
   kakao.maps.event.addListener(marker, 'click', function(){
-    infoWindow.getMap() ? infoWindow.close() : infoWindow.open(map, marker);
+    info.getMap() ? info.close() : info.open(map, marker);
   });
 })();
 """;

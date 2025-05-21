@@ -1,8 +1,14 @@
+// lib/repositories/camp_repository.dart
+
+import 'dart:async';
 import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:xml/xml.dart';
+
+import '../models/camp_with_availability.dart';
 
 class CampRepository {
   CampRepository({http.Client? httpClient})
@@ -24,7 +30,9 @@ class CampRepository {
   Stream<Map<String, Map<String, dynamic>>> availabilityStream() =>
       _firestore.collection('realtime_availability').snapshots().map((snap) {
         final map = <String, Map<String, dynamic>>{};
-        for (var d in snap.docs) map[d.id] = d.data() as Map<String, dynamic>;
+        for (var d in snap.docs) {
+          map[d.id] = d.data() as Map<String, dynamic>;
+        }
         return map;
       });
 
@@ -63,6 +71,7 @@ class CampRepository {
             .map((e) => e.text.trim())
             .where((u) => u.isNotEmpty)
             .toList();
+
     if (firstUrl != null && firstUrl.isNotEmpty && !urls.contains(firstUrl)) {
       urls.insert(0, firstUrl);
     }
@@ -186,5 +195,54 @@ class CampRepository {
         .doc(reviewId);
     batch.update(reviewRef, {'reportCount': FieldValue.increment(1)});
     await batch.commit();
+  }
+
+  /* ───────── 캠핑장 + 예약현황 합친 단일 스트림 ───────── */
+
+  Stream<List<CampWithAvailability>> campWithAvailStream(DateTime date) {
+    final key = DateFormat('yyyy-MM-dd').format(date);
+    return campgroundsStream().combineLatest(availabilityStream(), (
+      List<Map<String, dynamic>> camps,
+      Map<String, Map<String, dynamic>> availMap,
+    ) {
+      return camps.map((c) {
+        final a = availMap[c['name']]?[key] as Map<String, dynamic>? ?? {};
+        return CampWithAvailability(
+          camp: c,
+          available: a['available'] as int? ?? (c['available'] as int? ?? 0),
+          total: a['total'] as int? ?? (c['total'] as int? ?? 0),
+        );
+      }).toList();
+    });
+  }
+}
+
+/// RxDart 없이 간단히 두 스트림을 합치는 combineLatest 확장
+extension _CombineLatestExt<T> on Stream<T> {
+  Stream<R> combineLatest<S, R>(
+    Stream<S> other,
+    R Function(T a, S b) combiner,
+  ) {
+    late T lastA;
+    late S lastB;
+    bool hasA = false, hasB = false;
+    final controller = StreamController<R>();
+
+    final subA = listen((a) {
+      lastA = a;
+      hasA = true;
+      if (hasB) controller.add(combiner(lastA, lastB));
+    });
+    final subB = other.listen((b) {
+      lastB = b;
+      hasB = true;
+      if (hasA) controller.add(combiner(lastA, lastB));
+    });
+
+    controller.onCancel = () {
+      subA.cancel();
+      subB.cancel();
+    };
+    return controller.stream;
   }
 }

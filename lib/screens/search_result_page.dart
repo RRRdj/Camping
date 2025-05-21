@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:camping/repositories/search_repository.dart';
-import 'package:camping/repositories/search_display_service.dart';
+import 'package:camping/services/search_display_service.dart';
 import 'package:camping/services/static_data_service.dart';
 
 class SearchResultPage extends StatefulWidget {
