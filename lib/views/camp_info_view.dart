@@ -11,7 +11,30 @@ class CampInfoKey {
   final int available;
   final int total;
   final bool isBookmarked;
-  CampInfoKey(this.campName, this.available, this.total, this.isBookmarked);
+
+  const CampInfoKey(
+    this.campName,
+    this.available,
+    this.total,
+    this.isBookmarked,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CampInfoKey &&
+          runtimeType == other.runtimeType &&
+          campName == other.campName &&
+          available == other.available &&
+          total == other.total &&
+          isBookmarked == other.isBookmarked;
+
+  @override
+  int get hashCode =>
+      campName.hashCode ^
+      available.hashCode ^
+      total.hashCode ^
+      isBookmarked.hashCode;
 }
 
 /// VM : 캠핑장 정보 + 이미지 + 사용자 닉네임
@@ -19,7 +42,7 @@ final campInfoProvider = FutureProvider.family<CampInfoState, CampInfoKey>((
   ref,
   key,
 ) async {
-  final repo = ref.watch(campRepositoryProvider);
+  final repo = ref.read(campRepositoryProvider);
 
   final doc = await repo.campgroundDoc(key.campName);
   final data = doc.data()!;
@@ -40,5 +63,8 @@ final campInfoProvider = FutureProvider.family<CampInfoState, CampInfoKey>((
 final userNicknameProvider = FutureProvider<String?>((ref) async {
   final uid = FirebaseAuth.instance.currentUser?.uid;
   if (uid == null) return null;
-  return ref.watch(campRepositoryProvider).userNickname(uid);
+
+  // 비동기 함수 안에서는 ref.read로 한 번만 읽습니다.
+  final repo = ref.read(campRepositoryProvider);
+  return repo.userNickname(uid);
 });

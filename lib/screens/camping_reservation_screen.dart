@@ -6,10 +6,8 @@ import 'package:intl/intl.dart';
 class CampingReservationScreen extends StatefulWidget {
   final Map<String, dynamic> camp;
 
-  const CampingReservationScreen({
-    Key? key,
-    required this.camp,
-  }) : super(key: key);
+  const CampingReservationScreen({Key? key, required this.camp})
+    : super(key: key);
 
   @override
   State<CampingReservationScreen> createState() =>
@@ -26,10 +24,11 @@ class _CampingReservationScreenState extends State<CampingReservationScreen> {
   }
 
   Future<Map<String, dynamic>> _fetchAvailability() async {
-    final doc = await FirebaseFirestore.instance
-        .collection('realtime_availability')
-        .doc(widget.camp['name'])
-        .get();
+    final doc =
+        await FirebaseFirestore.instance
+            .collection('realtime_availability')
+            .doc(widget.camp['name'])
+            .get();
     if (doc.exists && doc.data() != null) {
       return doc.data()! as Map<String, dynamic>;
     }
@@ -61,10 +60,15 @@ class _CampingReservationScreenState extends State<CampingReservationScreen> {
 
               // 내일부터 14일치 날짜 리스트
               final today = DateTime.now();
-              final start = DateTime(today.year, today.month, today.day)
-                  .add(const Duration(days: 1));
-              final dates =
-              List.generate(14, (i) => start.add(Duration(days: i)));
+              final start = DateTime(
+                today.year,
+                today.month,
+                today.day,
+              ).add(const Duration(days: 1));
+              final dates = List.generate(
+                14,
+                (i) => start.add(Duration(days: i)),
+              );
 
               // 가로 스크롤 + 세로 스크롤을 모두 허용
               return SingleChildScrollView(
@@ -76,20 +80,25 @@ class _CampingReservationScreenState extends State<CampingReservationScreen> {
                       DataColumn(label: Text('날짜')),
                       DataColumn(label: Text('가능/전체')),
                     ],
-                    rows: dates.map((date) {
-                      final key = DateFormat('yyyy-MM-dd').format(date);
-                      final avail = (data[key] as Map<String, dynamic>?)
-                      ?['available'] ??
-                          0;
-                      final total = (data[key] as Map<String, dynamic>?)
-                      ?['total'] ??
-                          0;
-                      return DataRow(cells: [
-                        DataCell(Text(
-                            DateFormat('MM/dd(E)', 'ko').format(date))),
-                        DataCell(Text('$avail / $total')),
-                      ]);
-                    }).toList(),
+                    rows:
+                        dates.map((date) {
+                          final key = DateFormat('yyyy-MM-dd').format(date);
+                          final avail =
+                              (data[key]
+                                  as Map<String, dynamic>?)?['available'] ??
+                              0;
+                          final total =
+                              (data[key] as Map<String, dynamic>?)?['total'] ??
+                              0;
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                Text(DateFormat('MM/dd(E)', 'ko').format(date)),
+                              ),
+                              DataCell(Text('$avail / $total')),
+                            ],
+                          );
+                        }).toList(),
                   ),
                 ),
               );

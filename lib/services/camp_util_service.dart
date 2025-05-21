@@ -14,18 +14,41 @@ class CampUtilService {
 
   /* ── Kakao 지도 HTML (InAppWebView) ── */
   String kakaoMapHtml(double lat, double lng) => '''
-<!DOCTYPE html><html><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
-<style>html,body,#map{margin:0;padding:0;width:100%;height:100%;}</style>
-</head><body><div id="map"></div>
-<script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=YOUR_KEY"></script>
-<script>
-  const map = new kakao.maps.Map(
-    document.getElementById('map'),
-    { center: new kakao.maps.LatLng($lat, $lng), level: 3 }
-  );
-  new kakao.maps.Marker({ position: map.getCenter(), map: map });
-</script></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+  <style>
+    html, body, #map { margin:0; padding:0; width:100%; height:100%; }
+  </style>
+
+  <!-- HTTP 타일 URL을 HTTPS 로 치환 -->
+  <script>
+    (function(){
+      const origWrite = document.write.bind(document);
+      document.write = s => origWrite(
+        s.replace(/http:\\/\\/t1\\.daumcdn\\.net/g,
+                  'https://t1.daumcdn.net')
+      );
+    })();
+  </script>
+
+  <!-- 프로토콜을 명시한 HTTPS SDK 로드 -->
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4807f3322c219648ee8e346b3bfea1d7"></script>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    // DOM이 준비된 이후 바로 지도 생성
+    var map = new kakao.maps.Map(
+      document.getElementById('map'),
+      { center: new kakao.maps.LatLng($lat, $lng), level: 3 }
+    );
+    new kakao.maps.Marker({ position: map.getCenter(), map: map });
+  </script>
+</body>
+</html>
 ''';
 
   /// DateTime → 'yyyy-MM-dd' 문자열 변환
