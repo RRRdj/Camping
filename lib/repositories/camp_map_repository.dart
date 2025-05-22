@@ -3,6 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 
+const _greenMarker =
+    'https://img.icons8.com/?size=100&id=L7DH4c3i9coo&format=png&color=228BE6';
+const _redMarker =
+    'https://img.icons8.com/?size=100&id=kqCJWucG32lh&format=png&color=FA5252';
+
 /// ──────────────────────────────────────────────────────────
 /// Camp 모델
 /// ──────────────────────────────────────────────────────────
@@ -59,16 +64,21 @@ class Camp {
     final m = selectedDate.month;
     final d = selectedDate.day;
     final ok = available > 0;
+
+    /* ① 마커 색상 결정 */
+    final markerImg = ok ? _greenMarker : _redMarker;
+
+    /* ② 인포윈도우 내부 색상·텍스트 */
     final col = ok ? '#2ecc71' : '#e74c3c';
     final tag = ok ? '예약가능' : '마감';
 
-    /* ① 3배 확대 + origin = bottom center  */
+    /* ③ 인포윈도우 HTML */
     final html = '''
 <div style="
   transform:scale(3);
-  transform-origin:bottom center;   /* ⬅️ 확대 기준점 */
+  transform-origin:bottom center;
   padding:8px;
-  max-width:200px;
+  max-width:220px;
   font-family:sans-serif;
   background:#fff;
   box-shadow:0 2px 6px rgba(0,0,0,.3);
@@ -78,25 +88,34 @@ class Camp {
   <span style="font-size:12px; color:$col; font-weight:bold; display:block; margin-bottom:8px;">
     ${m}월&nbsp;${d}일&nbsp;$tag&nbsp;($available/$total)
   </span>
-  <button
-    style="width:100%; padding:6px; border:none; background:#007aff; color:#fff;
-           border-radius:4px; cursor:pointer;"
-    onclick="window.flutter_inappwebview.callHandler('detail','$contentId')">
-    상세정보
-  </button>
+
+  <!-- 버튼 영역: 가로 2-분할 -->
+  <div style="display:flex; gap:4px;">
+    <button style="flex:1; padding:6px; border:none; background:#007aff; color:#fff;
+                   border-radius:4px; cursor:pointer;"
+            onclick="window.flutter_inappwebview.callHandler('detail','$contentId')">
+      상세정보
+    </button>
+
+    <button style="flex:1; padding:6px; border:none; background:#555; color:#fff;
+                   border-radius:4px; cursor:pointer;"
+            onclick="openRoadviewAt($lat,$lng)">
+      로드뷰
+    </button>
+  </div>
 </div>
 ''';
 
     final encoded = jsonEncode(html);
 
-    /* ② 마커 + 인포윈도우 */
+    /* ④ 마커 + 인포윈도우 JS */
     return """
 (function(){
   var pos = new kakao.maps.LatLng($lat, $lng);
   var marker = new kakao.maps.Marker({
     position: pos,
     image: new kakao.maps.MarkerImage(
-      'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png',
+      '$markerImg',                    // ← 상태별 이미지
       new kakao.maps.Size(72,105),
       { offset: new kakao.maps.Point(36,105) }
     )

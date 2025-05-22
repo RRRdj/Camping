@@ -1,3 +1,4 @@
+// lib/screens/bookmark_screen.dart
 import 'package:flutter/material.dart';
 import '../campground_data.dart';
 import 'camping_info_screen.dart';
@@ -58,10 +59,24 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
             final total = availData?.total ?? 0;
             final isAvail = available > 0;
 
-            return FutureBuilder<Campground>(
-              future: _campRepo.fetchCampground(name),
+            // --- 여기를 수정했습니다 ---
+            return FutureBuilder<List<Map<String, dynamic>>>(
+              future: _campRepo.watchCamps().first,
               builder: (context, snap2) {
-                final img = snap2.data?.firstImageUrl ?? '';
+                if (snap2.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snap2.hasData) {
+                  return const SizedBox(); // 혹은 에러 위젯
+                }
+
+                // 이름으로 해당 캠핑장 데이터 찾기
+                final all = snap2.data!;
+                final matching = all.firstWhere(
+                  (m) => m['name'] == name,
+                  orElse: () => <String, dynamic>{},
+                );
+                final img = (matching['firstImageUrl'] as String?) ?? '';
                 final hasImage = img.isNotEmpty;
 
                 return Opacity(
@@ -147,6 +162,7 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                 );
               },
             );
+            // --- 수정 끝 ---
           },
         );
       },

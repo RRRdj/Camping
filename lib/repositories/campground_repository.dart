@@ -1,20 +1,28 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Campground {
-  final String firstImageUrl;
-
-  Campground({required this.firstImageUrl});
-}
-
+/// 캠핑장·실시간 재고 데이터 전담 Repository
 class CampgroundRepository {
-  final _firestore = FirebaseFirestore.instance;
+  final _campCol = FirebaseFirestore.instance.collection('campgrounds');
+  final _availCol = FirebaseFirestore.instance.collection(
+    'realtime_availability',
+  );
 
-  /// campName 문서에서 firstImageUrl을 가져옴
-  Future<Campground> fetchCampground(String campName) async {
-    final doc = await _firestore.collection('campgrounds').doc(campName).get();
+  /// 캠핑장 목록 스트림
+  Stream<List<Map<String, dynamic>>> watchCamps() {
+    return _campCol.snapshots().map(
+      (snap) =>
+          snap.docs.map((d) => d.data()! as Map<String, dynamic>).toList(),
+    );
+  }
 
-    final data = doc.data();
-    final img = data?['firstImageUrl'] as String? ?? '';
-    return Campground(firstImageUrl: img);
+  /// 실시간 재고 스트림
+  Stream<Map<String, Map<String, dynamic>>> watchAvailability() {
+    return _availCol.snapshots().map((snap) {
+      final map = <String, Map<String, dynamic>>{};
+      for (final doc in snap.docs) {
+        map[doc.id] = doc.data()! as Map<String, dynamic>;
+      }
+      return map;
+    });
   }
 }

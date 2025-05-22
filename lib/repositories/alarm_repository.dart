@@ -1,38 +1,41 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 class AlarmRepository {
   final _fire = FirebaseFirestore.instance;
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> alarmsStream(String uid) =>
-      _fire
-          .collection('user_alarm_settings')
-          .doc(uid)
-          .collection('alarms')
-          .orderBy('date')
-          .snapshots();
-
-  Future<void> deleteAlarm({
-    required String uid,
-    required String alarmId,
-  }) async {
-    await _fire
-        .collection('user_alarm_settings')
-        .doc(uid)
-        .collection('alarms')
-        .doc(alarmId)
-        .delete();
+  /// 사용자가 이미 보유한 알림 개수
+  Future<int> countUserAlarms(String uid) async {
+    final docs =
+        await _fire
+            .collection('user_alarm_settings')
+            .doc(uid)
+            .collection('alarms')
+            .get();
+    return docs.size;
   }
 
-  Future<void> updateAlarmDate({
+  /// 새 알림 등록
+  Future<void> addAlarm({
     required String uid,
-    required String alarmId,
-    required DateTime newDate,
+    required String campName,
+    required String? contentId,
+    required DateTime date,
   }) async {
+    await _fire.collection('user_alarm_settings').doc(uid).set({
+      'lastAlarmAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
     await _fire
         .collection('user_alarm_settings')
         .doc(uid)
         .collection('alarms')
-        .doc(alarmId)
-        .update({'date': newDate, 'isNotified': false});
+        .add({
+          'campName': campName,
+          'contentId': contentId,
+          'date': DateFormat('yyyy-MM-dd').format(date),
+          'isNotified': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
   }
 }
