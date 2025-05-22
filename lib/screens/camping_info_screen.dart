@@ -71,7 +71,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     setState(() => _userNickname = doc.data()?['nickname'] as String?);
   }
 
-  // ————————————————————————  UI  ————————————————————————
+  // ————————————————— UI —————————————————
   @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(
@@ -136,7 +136,10 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                             MaterialPageRoute(
                               builder:
                                   (_) => CampingReservationScreen(
-                                    camp: {'name': camp['name']},
+                                    camp: {
+                                      'name': camp['name'],
+                                      'addr1': camp['addr1'] as String? ?? '',
+                                    },
                                   ),
                             ),
                           ),
