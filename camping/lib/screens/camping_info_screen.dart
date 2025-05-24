@@ -289,7 +289,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                                   settings: RouteSettings(arguments: {
                                     'campName': c['name'],
                                     'contentId': _contentId,
-
+                                    'campType' : c['type'],
                                   }),
                                 ),
                               );

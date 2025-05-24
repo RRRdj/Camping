@@ -1,3 +1,5 @@
+// lib/screens/login_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -33,7 +35,6 @@ class _LoginScreenState extends State<LoginScreen> {
           _emailCtr.text = savedEmail;
           _pwCtr.text    = savedPw;
         });
-        // 프레임 완료 후 자동 로그인 시도
         WidgetsBinding.instance.addPostFrameCallback((_) => _login());
       }
     }
@@ -49,10 +50,10 @@ class _LoginScreenState extends State<LoginScreen> {
           .signInWithEmailAndPassword(email: email, password: pw);
       final uid = cred.user!.uid;
 
-      // Firestore 유저 문서가 없으면 생성
+      // Firestore에 유저 문서 없으면 생성
       final docRef = FirebaseFirestore.instance.collection('users').doc(uid);
-      final doc    = await docRef.get();
-      if (!doc.exists) {
+      final userDoc = await docRef.get();
+      if (!userDoc.exists) {
         await docRef.set({
           'email':     cred.user!.email ?? '',
           'name':      '',
@@ -62,10 +63,11 @@ class _LoginScreenState extends State<LoginScreen> {
           'photoUrl':
           'https://api.dicebear.com/6.x/adventurer/png?seed=$uid&size=150',
           'createdAt': FieldValue.serverTimestamp(),
+          'blocked':   false,
         });
       }
 
-      // SharedPreferences에 저장/삭제
+      // 로그인 성공 후 AuthGate에서 차단 체크하므로, 여기서는 바로 /main으로 이동
       final prefs = await SharedPreferences.getInstance();
       if (_autoLogin) {
         await prefs.setBool('autoLogin', true);
@@ -84,8 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (e.code == 'user-not-found' || e.code == 'wrong-password') {
         msg = '이메일 또는 비밀번호가 올바르지 않습니다.';
       }
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(msg)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } finally {
       setState(() => _loading = false);
     }
@@ -101,18 +102,14 @@ class _LoginScreenState extends State<LoginScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
-          keyboardDismissBehavior:
-          ScrollViewKeyboardDismissBehavior.onDrag,
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const SizedBox(height: 48),
               const Text('로그인',
-                  style: TextStyle(
-                      fontSize: 28, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
               const SizedBox(height: 32),
-
-              // 이메일 입력
               TextField(
                 controller: _emailCtr,
                 decoration: const InputDecoration(
@@ -122,8 +119,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
-
-              // 비밀번호 입력
               TextField(
                 controller: _pwCtr,
                 obscureText: true,
@@ -133,29 +128,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // 자동 로그인 체크박스
               CheckboxListTile(
                 value: _autoLogin,
-                onChanged: (v) => setState(() {
-                  _autoLogin = v ?? false;
-                }),
+                onChanged: (v) => setState(() => _autoLogin = v ?? false),
                 title: const Text('자동 로그인'),
                 controlAffinity: ListTileControlAffinity.leading,
               ),
               const SizedBox(height: 16),
-
-              // 로그인 버튼
               ElevatedButton(
                 onPressed: _login,
                 child: const Text('로그인'),
                 style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 48),
-                ),
+                    minimumSize: const Size(double.infinity, 48)),
               ),
               const SizedBox(height: 16),
-
-              // 회원가입 / 관리자 화면
               TextButton(
                 onPressed: () => Navigator.pushNamed(context, '/signup'),
                 child: const Text('회원가입'),

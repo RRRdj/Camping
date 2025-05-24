@@ -1,3 +1,5 @@
+// lib/screens/admin_dashboard_screen.dart
+
 import 'package:flutter/material.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
@@ -21,6 +23,12 @@ class AdminDashboardScreen extends StatelessWidget {
             title: '신고된 후기 관리',
             icon: Icons.reviews,
             onTap: () => Navigator.pushNamed(context, '/admin/reviews'),
+          ),
+          _buildMenuCard(
+            context,
+            title: '사용자 관리',               // ← 추가된 부분
+            icon: Icons.people,
+            onTap: () => Navigator.pushNamed(context, '/admin/users'),
           ),
           // 필요 시 다른 메뉴도 계속 추가 가능
         ],
