@@ -407,7 +407,7 @@ final List<Map<String, dynamic>> campgroundList = [
   },
   {
     'contentId'    : '2488',
-    'name'         : '소금강산',
+    'name'         : '소금강자동차야영장',
     'location'     : '강원 강릉시',
     'type'         : '국립',
     'firstImageUrl': null,
@@ -416,7 +416,10 @@ final List<Map<String, dynamic>> campgroundList = [
     'total'        : 0,
     'intro': null,
     'site': 'https://reservation.knps.or.kr/contents/C/serviceGuide.do?prdDvcd=C&parkId=B06&deptId=B061001',
-    'reservation_warning': '',
+    'reservation_warning':
+    '- 예약은 매월 1일 오전 9시에 오픈되며, 선착순으로 마감됩니다.\n'
+        + '- 예약 후 24시간 이내에 결제하지 않으면 자동 취소됩니다.\n'
+        + '- 반려동물 동반, 폭죽 사용, 지정구역 외 취사는 금지입니다.',
 
     'featureNm': null,
     'resveUrl': null,
