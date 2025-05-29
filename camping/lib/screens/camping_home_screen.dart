@@ -1,4 +1,5 @@
 // lib/screens/camping_home_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -16,7 +17,6 @@ class CampingHomeScreen extends StatefulWidget {
     required this.onToggleBookmark,
     required this.selectedDate,
     required this.onDateChanged,
-
   }) : super(key: key);
 
   @override
@@ -24,13 +24,12 @@ class CampingHomeScreen extends StatefulWidget {
 }
 
 class _CampingHomeScreenState extends State<CampingHomeScreen> {
-  //DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   String? _appliedKeyword;
-  String? _appliedRegion;
-  String? _appliedType;
-  String? _appliedDuty;
-  String? _appliedEnv;
-  String? _appliedAmenity;
+  List<String> _appliedRegion = [];
+  List<String> _appliedType = [];
+  List<String> _appliedDuty = [];
+  List<String> _appliedEnv = [];
+  List<String> _appliedAmenity = [];
 
   List<Map<String, dynamic>> _camps = [];
 
@@ -53,29 +52,26 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     final regions = _camps
         .map((c) => (c['location'] as String).split(' ').first)
         .toSet()
-        .toList()
-      ..sort();
-    final types = _camps.map((c) => c['type'] as String).toSet().toList()
-      ..sort();
+        .toList()..sort();
+    final types = _camps
+        .map((c) => c['type'] as String)
+        .toSet()
+        .toList()..sort();
     final duties = _camps
         .expand((c) => (c['inDuty'] as String? ?? '')
         .split(',')
         .where((s) => s.isNotEmpty))
         .toSet()
-        .toList()
-      ..sort();
+        .toList()..sort();
     final envs = _camps
         .map((c) => c['lctCl'] as String? ?? '')
         .where((e) => e.isNotEmpty)
         .toSet()
-        .toList()
-      ..sort();
+        .toList()..sort();
     final amenities = _camps
-        .expand((c) => (c['amenities'] as List<dynamic>? ?? []))
-        .cast<String>()
+        .expand((c) => (c['amenities'] as List<dynamic>? ?? []).cast<String>())
         .toSet()
-        .toList()
-      ..sort();
+        .toList()..sort();
 
     showModalBottomSheet(
       context: context,
@@ -108,33 +104,62 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                   _buildSection(
                     title: '지역',
                     options: regions,
-                    value: _appliedRegion,
-                    onSelected: (v) => setModalState(() => _appliedRegion = v),
+                    selected: _appliedRegion,
+                    onToggle: (opt) => setModalState(() {
+                      if (_appliedRegion.contains(opt)) {
+                        _appliedRegion.remove(opt);
+                      } else {
+                        _appliedRegion.add(opt);
+                      }
+                    }),
                   ),
                   _buildSection(
                     title: '캠핑장 유형',
                     options: types,
-                    value: _appliedType,
-                    onSelected: (v) => setModalState(() => _appliedType = v),
+                    selected: _appliedType,
+                    onToggle: (opt) => setModalState(() {
+                      if (_appliedType.contains(opt)) {
+                        _appliedType.remove(opt);
+                      } else {
+                        _appliedType.add(opt);
+                      }
+                    }),
                   ),
                   _buildSection(
                     title: '야영장 구분',
                     options: duties,
-                    value: _appliedDuty,
-                    onSelected: (v) => setModalState(() => _appliedDuty = v),
+                    selected: _appliedDuty,
+                    onToggle: (opt) => setModalState(() {
+                      if (_appliedDuty.contains(opt)) {
+                        _appliedDuty.remove(opt);
+                      } else {
+                        _appliedDuty.add(opt);
+                      }
+                    }),
                   ),
                   _buildSection(
                     title: '환경',
                     options: envs,
-                    value: _appliedEnv,
-                    onSelected: (v) => setModalState(() => _appliedEnv = v),
+                    selected: _appliedEnv,
+                    onToggle: (opt) => setModalState(() {
+                      if (_appliedEnv.contains(opt)) {
+                        _appliedEnv.remove(opt);
+                      } else {
+                        _appliedEnv.add(opt);
+                      }
+                    }),
                   ),
                   _buildSection(
                     title: '편의시설',
                     options: amenities,
-                    value: _appliedAmenity,
-                    onSelected: (v) =>
-                        setModalState(() => _appliedAmenity = v),
+                    selected: _appliedAmenity,
+                    onToggle: (opt) => setModalState(() {
+                      if (_appliedAmenity.contains(opt)) {
+                        _appliedAmenity.remove(opt);
+                      } else {
+                        _appliedAmenity.add(opt);
+                      }
+                    }),
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -145,11 +170,11 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                             style: TextStyle(color: Colors.teal)),
                         onPressed: () => setModalState(() {
                           _appliedKeyword = null;
-                          _appliedRegion = null;
-                          _appliedType = null;
-                          _appliedDuty = null;
-                          _appliedEnv = null;
-                          _appliedAmenity = null;
+                          _appliedRegion.clear();
+                          _appliedType.clear();
+                          _appliedDuty.clear();
+                          _appliedEnv.clear();
+                          _appliedAmenity.clear();
                         }),
                       ),
                       ElevatedButton(
@@ -158,7 +183,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8))),
                         onPressed: () {
-                          setState(() {});
+                          setState(() {}); // 필터 적용
                           Navigator.pop(ctx);
                         },
                         child: const Text('적용',
@@ -178,8 +203,8 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   Widget _buildSection({
     required String title,
     required List<String> options,
-    required String? value,
-    required void Function(String?) onSelected,
+    required List<String> selected,
+    required void Function(String) onToggle,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,11 +215,11 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
           spacing: 8,
           runSpacing: 8,
           children: options.map((opt) {
-            final selected = opt == value;
+            final isSelected = selected.contains(opt);
             return ChoiceChip(
               label: Text(opt),
-              selected: selected,
-              onSelected: (_) => onSelected(selected ? null : opt),
+              selected: isSelected,
+              onSelected: (_) => onToggle(opt),
               selectedColor: Colors.teal.shade100,
               backgroundColor: Colors.grey.shade200,
             );
@@ -208,7 +233,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final dateLabel = DateFormat('MM월 dd일').format(widget.selectedDate);
-    final dateKey   = DateFormat('yyyy-MM-dd').format(widget.selectedDate);
+    final dateKey = DateFormat('yyyy-MM-dd').format(widget.selectedDate);
 
     return Scaffold(
       appBar: AppBar(
@@ -237,8 +262,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                 if (picked != null) widget.onDateChanged(picked);
               },
               child: Chip(
-                avatar:
-                const Icon(Icons.calendar_today, color: Colors.white),
+                avatar: const Icon(Icons.calendar_today, color: Colors.white),
                 label: Text(dateLabel,
                     style: const TextStyle(color: Colors.white)),
                 backgroundColor: Colors.teal,
@@ -268,8 +292,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                   .snapshots(),
               builder: (ctx, campSnap) {
                 if (!campSnap.hasData) {
-                  return const Center(
-                      child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 }
                 final camps = campSnap.data!.docs
                     .map((d) => d.data()! as Map<String, dynamic>)
@@ -281,8 +304,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                       .snapshots(),
                   builder: (ctx2, availSnap) {
                     if (!availSnap.hasData) {
-                      return const Center(
-                          child: CircularProgressIndicator());
+                      return const Center(child: CircularProgressIndicator());
                     }
                     final availabilityMap = <String, Map<String, dynamic>>{};
                     for (var doc in availSnap.data!.docs) {
@@ -297,31 +319,30 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                           !name.contains(_appliedKeyword!.toLowerCase())) {
                         return false;
                       }
-                      if (_appliedRegion != null &&
-                          (c['location'] as String)
-                              .split(' ')
-                              .first !=
-                              _appliedRegion) {
+                      final region = (c['location'] as String).split(' ').first;
+                      if (_appliedRegion.isNotEmpty &&
+                          !_appliedRegion.contains(region)) {
                         return false;
                       }
-                      if (_appliedType != null && c['type'] != _appliedType) {
+                      if (_appliedType.isNotEmpty &&
+                          !_appliedType.contains(c['type'] as String)) {
                         return false;
                       }
-                      if (_appliedDuty != null) {
-                        final duties = (c['inDuty'] as String? ?? '')
-                            .split(',')
-                            .where((s) => s.isNotEmpty);
-                        if (!duties.contains(_appliedDuty)) {
-                          return false;
-                        }
-                      }
-                      if (_appliedEnv != null &&
-                          (c['lctCl'] as String? ?? '') != _appliedEnv) {
+                      final duties =
+                      (c['inDuty'] as String? ?? '').split(',');
+                      if (_appliedDuty.isNotEmpty &&
+                          !_appliedDuty.any((d) => duties.contains(d))) {
                         return false;
                       }
-                      if (_appliedAmenity != null &&
-                          !((c['amenities'] as List<dynamic>? ?? [])
-                              .contains(_appliedAmenity))) {
+                      final env = c['lctCl'] as String? ?? '';
+                      if (_appliedEnv.isNotEmpty &&
+                          !_appliedEnv.contains(env)) {
+                        return false;
+                      }
+                      final amens = (c['amenities'] as List<dynamic>? ?? [])
+                          .cast<String>();
+                      if (_appliedAmenity.isNotEmpty &&
+                          !_appliedAmenity.every((a) => amens.contains(a))) {
                         return false;
                       }
                       return true;
@@ -330,8 +351,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                     if (filtered.isEmpty) {
                       return const Center(
                         child: Text('검색결과가 없습니다',
-                            style: TextStyle(
-                                fontSize: 16, color: Colors.grey)),
+                            style: TextStyle(fontSize: 16, color: Colors.grey)),
                       );
                     }
 
@@ -369,10 +389,8 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                   available: avail,
                                   total: total,
                                   isBookmarked:
-                                  widget.bookmarked[c['name']] ==
-                                      true,
-                                  onToggleBookmark:
-                                  widget.onToggleBookmark,
+                                  widget.bookmarked[c['name']] == true,
+                                  onToggleBookmark: widget.onToggleBookmark,
                                   selectedDate: widget.selectedDate,
                                 ),
                               ),
@@ -390,8 +408,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                         (c['firstImageUrl'] as String)
                                             .isNotEmpty)
                                       ClipRRect(
-                                        borderRadius:
-                                        BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(8),
                                         child: Image.network(
                                           c['firstImageUrl'],
                                           width: 60,
@@ -448,8 +465,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                             : Colors.grey,
                                       ),
                                       onPressed: () =>
-                                          widget.onToggleBookmark(
-                                              c['name']),
+                                          widget.onToggleBookmark(c['name']),
                                     ),
                                   ],
                                 ),

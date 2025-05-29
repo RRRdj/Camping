@@ -12,6 +12,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:camping/screens/camping_reservation_screen.dart';
 import 'package:camping/screens/reservation_info_screen.dart';
 import 'dart:ui' as ui;
+
 class CampingInfoScreen extends StatefulWidget {
   final String campName;
   final int available;
@@ -51,10 +52,14 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
   void initState() {
     super.initState();
     _bookmarked = widget.isBookmarked;
+
+    // 캠핑장 기본 정보 로드
     _campFuture = FirebaseFirestore.instance
         .collection('campgrounds')
         .doc(widget.campName)
         .get();
+
+    // 이미지 로드 및 contentId 추출
     _imagesFuture = _campFuture.then((doc) {
       final data = doc.data()!;
       final cid = data['contentId']?.toString() ?? '';
@@ -62,6 +67,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
       final firstUrl = data['firstImageUrl'] as String?;
       return _fetchImages(cid, firstUrl);
     });
+
+    // 사용자 닉네임 로드
     _loadUserNickname();
   }
 
@@ -102,6 +109,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     }
     return urls;
   }
+
   Future<void> _onTapAlarm() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -109,12 +117,12 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
       return;
     }
     await FirebaseFirestore.instance
-         .collection('user_alarm_settings')
-         .doc(user.uid)
-         .set(
-           { 'lastAlarmAt': FieldValue.serverTimestamp() },
-          SetOptions(merge: true),
-         );
+        .collection('user_alarm_settings')
+        .doc(user.uid)
+        .set(
+      {'lastAlarmAt': FieldValue.serverTimestamp()},
+      SetOptions(merge: true),
+    );
     final snapshot = await FirebaseFirestore.instance
         .collection('user_alarm_settings')
         .doc(user.uid)
@@ -128,7 +136,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('알림 설정 안내'),
-        content: const Text('알림을 받고 싶은 날짜를 선택하세요.\n선택한 날짜에 빈자리가 생기면 알려드릴게요!'),
+        content: const Text(
+            '알림을 받고 싶은 날짜를 선택하세요.\n선택한 날짜에 빈자리가 생기면 알려드릴게요!'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -137,7 +146,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
         ],
       ),
     );
-    // 📅 날짜 선택
     final selectedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now().add(const Duration(days: 1)),
@@ -176,15 +184,12 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snap.hasError || !snap.hasData || !snap.data!.exists) {
-              return const Center(
-                  child: Text('캠핑장 정보를 불러올 수 없습니다.'));
+              return const Center(child: Text('캠핑장 정보를 불러올 수 없습니다.'));
             }
             final c = snap.data!.data()!;
-            final dateLabel = DateFormat('MM월 dd일')
-                .format(widget.selectedDate);
+            final dateLabel = DateFormat('MM월 dd일').format(widget.selectedDate);
             final isAvail = widget.available > 0;
-            final amenities =
-                (c['amenities'] as List<dynamic>?)?.cast<String>() ?? [];
+            final amenities = (c['amenities'] as List<dynamic>?)?.cast<String>() ?? [];
             _contentId ??= c['contentId']?.toString() ?? '';
 
             return CustomScrollView(
@@ -203,26 +208,22 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         }
                         return PageView.builder(
                           itemCount: imgs.length,
-                          itemBuilder: (_, i) =>
-                              Image.network(imgs[i], fit: BoxFit.cover),
+                          itemBuilder: (_, i) => Image.network(imgs[i], fit: BoxFit.cover),
                         );
                       },
                     ),
                   ),
                 ),
                 SliverPadding(
-                  padding:
-                  EdgeInsets.fromLTRB(16, 12, 16, bottomInset + 12),
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset + 12),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      // 제목 / 공유 / 즐겨찾기
                       Row(
                         children: [
                           Expanded(
                             child: Text(
                               c['name'] as String,
-                              style: const TextStyle(
-                                  fontSize: 24, fontWeight: FontWeight.bold),
+                              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                             ),
                           ),
                           IconButton(
@@ -231,9 +232,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                           ),
                           IconButton(
                             icon: Icon(
-                              _bookmarked
-                                  ? Icons.bookmark
-                                  : Icons.bookmark_border,
+                              _bookmarked ? Icons.bookmark : Icons.bookmark_border,
                               color: _bookmarked ? Colors.red : Colors.grey,
                             ),
                             onPressed: () {
@@ -244,10 +243,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      // 날짜 + 예약 상태
                       Text(
-                        '$dateLabel ${isAvail ? '예약 가능' : '예약 마감'} '
-                            '(${widget.available}/${widget.total})',
+                        '$dateLabel ${isAvail ? '예약 가능' : '예약 마감'} (${widget.available}/${widget.total})',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -255,7 +252,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      // 예약 현황 / 예약정보 /알림 설정 버튼
                       Row(
                         children: [
                           OutlinedButton.icon(
@@ -265,17 +261,10 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      CampingReservationScreen(camp: {
-                                        'name': c['name']
-                                      }),
+                                  builder: (_) => CampingReservationScreen(camp: {'name': c['name']}),
                                 ),
                               );
                             },
-
-
-
-
                           ),
                           const SizedBox(width: 8),
                           OutlinedButton.icon(
@@ -289,7 +278,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                                   settings: RouteSettings(arguments: {
                                     'campName': c['name'],
                                     'contentId': _contentId,
-                                    'campType' : c['type'],
+                                    'campType': c['type'],
+                                    'reservationWarning': c['reservation_warning'],
                                   }),
                                 ),
                               );
@@ -301,58 +291,87 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                             label: const Text('알림'),
                             onPressed: _onTapAlarm,
                           ),
-
                         ],
                       ),
                       const SizedBox(height: 12),
-                      // 예약하기 버튼
                       ElevatedButton(
                         onPressed: () async {
                           final type = c['type'];
                           String? url;
                           if (type == '국립') {
-                            url =
-                            'https://reservation.knps.or.kr/reservation/searchSimpleCampReservation.do';
+                            url = 'https://reservation.knps.or.kr/reservation/searchSimpleCampReservation.do';
                           } else {
-                            url = c['resveUrl'];
+                            url = c['resveUrl'] as String?;
                           }
                           if (url == null || url.isEmpty) {
-                            _showMsg(
-                                '예약 페이지가 없습니다.\n전화로 문의하세요: ${c['tel'] ?? '-'}');
+                            _showMsg('예약 페이지가 없습니다.\n전화로 문의하세요: ${c['tel'] ?? '-'}');
                             return;
                           }
                           final uri = Uri.parse(url);
                           if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri,
-                                mode: LaunchMode.externalApplication);
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
                           } else {
                             _showMsg('페이지를 열 수 없습니다.');
                           }
                         },
                         child: const Text('예약하기'),
                       ),
-                      const Divider(height: 32),
 
-                      // 주소
+                      // ─── 사용자 메모 실시간 반영 ───
+                      StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                        stream: (FirebaseAuth.instance.currentUser != null && _contentId != null)
+                            ? FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(FirebaseAuth.instance.currentUser!.uid)
+                            .collection('reservation_memos')
+                            .doc(_contentId!)
+                            .snapshots()
+                            : const Stream.empty(),
+                        builder: (ctx, memoSnap) {
+                          if (!memoSnap.hasData || !memoSnap.data!.exists) {
+                            return const SizedBox.shrink();
+                          }
+                          final memo = memoSnap.data!.data()?['memo'] as String? ?? '';
+                          if (memo.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return Card(
+                            margin: const EdgeInsets.only(top: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            elevation: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: const [
+                                      Icon(Icons.note, color: Colors.teal),
+                                      SizedBox(width: 8),
+                                      Text('📝 나만의 메모', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(memo, style: const TextStyle(fontSize: 14, height: 1.4)),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(height: 32),
                       _InfoRow(
                         label: '주소',
                         value: c['addr1'] ?? '정보없음',
                         icon: Icons.location_on,
                         color: Colors.teal,
                       ),
-
-                      // Kakao Map
                       const SizedBox(height: 8),
                       SizedBox(
                         height: 200,
                         child: Builder(builder: (ctx) {
-                          final lat = double.tryParse(
-                              c['mapY'] as String? ?? '') ??
-                              0.0;
-                          final lng = double.tryParse(
-                              c['mapX'] as String? ?? '') ??
-                              0.0;
-
+                          final lat = double.tryParse(c['mapY'] as String? ?? '') ?? 0.0;
+                          final lng = double.tryParse(c['mapX'] as String? ?? '') ?? 0.0;
                           final html = '''
 <!DOCTYPE html>
 <html>
@@ -394,25 +413,18 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
 </body>
 </html>
 ''';
-
                           return InAppWebView(
-                            initialData:
-                            InAppWebViewInitialData(data: html),
+                            initialData: InAppWebViewInitialData(data: html),
                             initialOptions: InAppWebViewGroupOptions(
                               android: AndroidInAppWebViewOptions(
-                                mixedContentMode:
-                                AndroidMixedContentMode
-                                    .MIXED_CONTENT_ALWAYS_ALLOW,
+                                mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
                               ),
-                              ios: IOSInAppWebViewOptions(
-                                allowsInlineMediaPlayback: true,
-                              ),
+                              ios: IOSInAppWebViewOptions(allowsInlineMediaPlayback: true),
                             ),
                           );
                         }),
                       ),
                       const SizedBox(height: 12),
-
                       _InfoRow(
                         label: '전화번호',
                         value: c['tel'] ?? '정보없음',
@@ -439,22 +451,16 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                           icon: Icons.nature,
                           color: Colors.brown,
                         ),
-
                       const Divider(height: 32),
                       _AmenitySection(amenities: amenities),
-
-                      // 상세 정보
-                      // ─── 상세 정보 ───
                       const Divider(height: 32),
                       Text(
                         '기본 정보',
                         style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
-
-// lineIntro, intro, featureNm 중 하나라도 있으면 출력, 아니면 안내문
                       if (((c['lineIntro'] as String?)?.isNotEmpty == true) ||
-                          ((c['intro']     as String?)?.isNotEmpty == true) ||
+                          ((c['intro'] as String?)?.isNotEmpty == true) ||
                           ((c['featureNm'] as String?)?.isNotEmpty == true)) ...[
                         if ((c['lineIntro'] as String?)?.isNotEmpty == true)
                           ExpandableText(
@@ -467,11 +473,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                           (c['intro'] as String?)?.isNotEmpty == true
                               ? c['intro'] as String
                               : (c['featureNm'] as String? ?? ''),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[800],
-                            height: 1.5,
-                          ),
+                          style: TextStyle(fontSize: 14, color: Colors.grey[800], height: 1.5),
                           trimLines: 5,
                         ),
                       ] else ...[
@@ -481,23 +483,17 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         ),
                       ],
                       const SizedBox(height: 12),
-
-
-                      // 야영장 사이트 버튼
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.teal,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         onPressed: () async {
                           final siteUrl = c['site'] as String?;
                           if (siteUrl != null && siteUrl.isNotEmpty) {
                             final uri = Uri.parse(siteUrl);
                             if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri,
-                                  mode: LaunchMode.externalApplication);
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
                             } else {
                               _showMsg('사이트를 열 수 없습니다.');
                             }
@@ -505,12 +501,9 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                             _showMsg('사이트 정보가 없습니다.');
                           }
                         },
-                        child: const Text('관련 사이트',
-                            style: TextStyle(color: Colors.white)),
+                        child: const Text('관련 사이트', style: TextStyle(color: Colors.white)),
                       ),
                       const Divider(height: 32),
-
-                      // ─── 리뷰 작성 폼 ───
                       _ReviewForm(
                         txtCtr: _txtCtr,
                         rating: _rating,
@@ -519,8 +512,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         userNickname: _userNickname,
                       ),
                       const Divider(height: 32),
-
-                      // ─── 리뷰 목록 ───
                       _ReviewList(contentId: _contentId ?? ''),
                     ]),
                   ),
@@ -595,12 +586,10 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
   }
 
   void _showMsg(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 }
 
-// --- 정보 행 표시용 위젯 ---
 class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
@@ -626,8 +615,7 @@ class _InfoRow extends StatelessWidget {
           children: [
             Icon(icon, color: color, size: 20),
             const SizedBox(width: 8),
-            Text('$label: ',
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
             Expanded(child: Text(value)),
           ],
         ),
@@ -636,7 +624,6 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-// --- 편의시설 표시용 위젯 ---
 class _AmenitySection extends StatelessWidget {
   final List<String> amenities;
   const _AmenitySection({required this.amenities});
@@ -655,8 +642,7 @@ class _AmenitySection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('편의시설',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        const Text('편의시설', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -668,14 +654,12 @@ class _AmenitySection extends StatelessWidget {
   }
 }
 
-// --- 리뷰 작성 폼 위젯 ---
 class _ReviewForm extends StatelessWidget {
   final int rating;
   final ValueChanged<int> onRating;
   final TextEditingController txtCtr;
   final VoidCallback onSubmit;
-  final String?
-  userNickname;
+  final String? userNickname;
 
   const _ReviewForm({
     required this.rating,
@@ -689,24 +673,19 @@ class _ReviewForm extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text('리뷰 작성',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+      const Text('리뷰 작성', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
       const SizedBox(height: 8),
       if (userNickname != null)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Text('작성자: $userNickname',
-              style: const TextStyle(color: Colors.grey)),
+          child: Text('작성자: $userNickname', style: const TextStyle(color: Colors.grey)),
         ),
       Row(
         children: [
           const Text('평점:'), const SizedBox(width: 8),
           DropdownButton<int>(
             value: rating,
-            items: List.generate(
-                5,
-                    (i) => DropdownMenuItem(
-                    value: i + 1, child: Text('${i + 1}'))),
+            items: List.generate(5, (i) => DropdownMenuItem(value: i + 1, child: Text('${i + 1}'))),
             onChanged: (v) {
               if (v != null) onRating(v);
             },
@@ -720,8 +699,7 @@ class _ReviewForm extends StatelessWidget {
         maxLines: 5,
         decoration: InputDecoration(
           labelText: '내용',
-          border:
-          OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
       const SizedBox(height: 8),
@@ -733,7 +711,6 @@ class _ReviewForm extends StatelessWidget {
   );
 }
 
-// --- 리뷰 목록 표시 위젯 ---
 class _ReviewList extends StatelessWidget {
   final String contentId;
   const _ReviewList({required this.contentId});
@@ -765,41 +742,31 @@ class _ReviewList extends StatelessWidget {
             final reviewId = doc.id;
             final nick = data['nickname'] as String? ?? '익명';
             final date = data['date'] != null
-                ? (data['date'] as Timestamp)
-                .toDate()
-                .toString()
-                .substring(0, 10)
+                ? (data['date'] as Timestamp).toDate().toString().substring(0, 10)
                 : '';
             final rating = data['rating'] as int? ?? 5;
             final content = data['content'] as String? ?? '';
 
             List<Widget> actionButtons = [];
-            if (currentUser != null &&
-                reviewerId == currentUser.uid) {
+            if (currentUser != null && reviewerId == currentUser.uid) {
               actionButtons.addAll([
                 IconButton(
-                  icon: const Icon(Icons.edit,
-                      size: 18, color: Colors.teal),
+                  icon: const Icon(Icons.edit, size: 18, color: Colors.teal),
                   tooltip: '수정',
-                  onPressed: () => _showEditDialog(
-                      context, reviewId, rating, content),
+                  onPressed: () => _showEditDialog(context, reviewId, rating, content),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete,
-                      size: 18, color: Colors.red),
+                  icon: const Icon(Icons.delete, size: 18, color: Colors.red),
                   tooltip: '삭제',
-                  onPressed: () =>
-                      _showDeleteDialog(context, reviewId),
+                  onPressed: () => _showDeleteDialog(context, reviewId),
                 ),
               ]);
             } else if (currentUser != null) {
               actionButtons.add(
                 IconButton(
-                  icon: const Icon(Icons.flag,
-                      size: 18, color: Colors.redAccent),
+                  icon: const Icon(Icons.flag, size: 18, color: Colors.redAccent),
                   tooltip: '신고',
-                  onPressed: () => _showReportDialog(
-                      context, reviewId, reviewerId),
+                  onPressed: () => _showReportDialog(context, reviewId, reviewerId),
                 ),
               );
             }
@@ -809,13 +776,9 @@ class _ReviewList extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(nick,
-                        style:
-                        const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(nick, style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(width: 8),
-                    Text(date,
-                        style: const TextStyle(
-                            color: Colors.grey, fontSize: 12)),
+                    Text(date, style: const TextStyle(color: Colors.grey, fontSize: 12)),
                     const Spacer(),
                     ...actionButtons,
                   ],
@@ -825,9 +788,7 @@ class _ReviewList extends StatelessWidget {
                   children: List.generate(
                     5,
                         (i) => Icon(
-                      i < rating
-                          ? Icons.star
-                          : Icons.star_border,
+                      i < rating ? Icons.star : Icons.star_border,
                       color: Colors.green,
                       size: 16,
                     ),
@@ -844,7 +805,6 @@ class _ReviewList extends StatelessWidget {
     );
   }
 
-  /// 수정 다이얼로그 띄우고 Firestore 업데이트
   Future<void> _showEditDialog(
       BuildContext context,
       String reviewId,
@@ -879,7 +839,7 @@ class _ReviewList extends StatelessWidget {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true),  child: const Text('확인')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('확인')),
         ],
       ),
     );
@@ -898,7 +858,6 @@ class _ReviewList extends StatelessWidget {
     }
   }
 
-  /// 삭제 다이얼로그 띄우고 Firestore 에서 삭제
   Future<void> _showDeleteDialog(BuildContext context, String reviewId) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -907,7 +866,7 @@ class _ReviewList extends StatelessWidget {
         content: const Text('이 리뷰를 삭제하시겠습니까?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true),  child: const Text('삭제')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('삭제')),
         ],
       ),
     );
@@ -923,11 +882,13 @@ class _ReviewList extends StatelessWidget {
   }
 
   Future<void> _showReportDialog(
-      BuildContext context, String reviewId, String reportedUserId) async {
+      BuildContext context,
+      String reviewId,
+      String reportedUserId,
+      ) async {
     final reporter = FirebaseAuth.instance.currentUser;
     if (reporter == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('로그인 후 이용해주세요.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('로그인 후 이용해주세요.')));
       return;
     }
 
@@ -939,14 +900,11 @@ class _ReviewList extends StatelessWidget {
         content: TextField(
           controller: reasonCtrl,
           maxLines: 3,
-          decoration:
-          const InputDecoration(hintText: '신고 사유를 입력하세요'),
+          decoration: const InputDecoration(hintText: '신고 사유를 입력하세요'),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, reasonCtrl.text.trim()),
-              child: const Text('확인')),
+          TextButton(onPressed: () => Navigator.pop(ctx, reasonCtrl.text.trim()), child: const Text('확인')),
         ],
       ),
     );
@@ -965,10 +923,7 @@ class _ReviewList extends StatelessWidget {
     );
     if (confirm != true) return;
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(reporter.uid)
-        .get();
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(reporter.uid).get();
     final reporterNickname = userDoc.data()?['nickname'] as String? ?? '';
 
     final batch = FirebaseFirestore.instance.batch();
@@ -992,11 +947,10 @@ class _ReviewList extends StatelessWidget {
     batch.update(reviewDocRef, {'reportCount': FieldValue.increment(1)});
 
     await batch.commit();
-
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('신고가 접수되었습니다.')));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('신고가 접수되었습니다.')));
   }
 }
+
 class ExpandableText extends StatefulWidget {
   final String text;
   final TextStyle? style;
@@ -1015,8 +969,6 @@ class ExpandableText extends StatefulWidget {
 
 class _ExpandableTextState extends State<ExpandableText> {
   bool _expanded = false;
-  late String _firstPart;
-  late String _remainingPart;
   bool _needTrim = false;
 
   @override
@@ -1059,11 +1011,7 @@ class _ExpandableTextState extends State<ExpandableText> {
             padding: const EdgeInsets.only(top: 2),
             child: Text(
               _expanded ? '간략히' : '더보기',
-              style: TextStyle(
-                color: Colors.teal,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 13),
             ),
           ),
         ),
