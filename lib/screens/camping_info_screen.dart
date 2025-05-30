@@ -1,6 +1,7 @@
-/// lib/screens/camping_info_screen.dart
+// lib/screens/camping_info_screen.dart
 // ignore_for_file: library_private_types_in_public_api
 
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:intl/intl.dart';
@@ -48,8 +49,14 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
   late Future<List<String>> _imagesFuture;
   late bool _bookmarked;
 
+  // ─── 리뷰 입력 ───
   final TextEditingController _txtCtr = TextEditingController();
   int _rating = 5;
+
+  // ─── 메모 기능 ───
+  final TextEditingController _memoCtr = TextEditingController();
+  String _memoText = '';
+
   String? _contentId;
   String? _userNickname;
 
@@ -68,11 +75,52 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     _loadUserNickname();
   }
 
+  @override
+  void dispose() {
+    _txtCtr.dispose();
+    _memoCtr.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadUserNickname() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     final nick = await _repo.getUserNickname(user.uid);
     setState(() => _userNickname = nick);
+  }
+
+  // ─── 메모 수정용 다이얼로그 ───
+  Future<void> _showEditDialog() async {
+    _memoCtr.text = _memoText;
+    final result = await showDialog<String>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('메모 수정'),
+            content: TextField(
+              controller: _memoCtr,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                hintText: '메모를 입력하세요',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, _memoCtr.text.trim()),
+                child: const Text('확인'),
+              ),
+            ],
+          ),
+    );
+    if (result != null) {
+      setState(() => _memoText = result);
+      _showMsg('메모가 저장되었습니다.');
+    }
   }
 
   // ─── 알림 설정 ───
@@ -182,7 +230,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                   padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset + 12),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      // 제목 / 공유 / 즐겨찾기
+                      // ─── 캠핑장 제목, 공유, 즐겨찾기 ───
                       Row(
                         children: [
                           Expanded(
@@ -213,7 +261,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      // 날짜 + 예약 상태
+                      // ─── 예약 상태 ───
                       Text(
                         '$dateLabel ${isAvail ? '예약 가능' : '예약 마감'} '
                         '(${widget.available}/${widget.total})',
@@ -224,7 +272,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      // 예약/정보/알림 버튼
+                      // ─── 예약/정보/알림 버튼 ───
                       Row(
                         children: [
                           OutlinedButton.icon(
@@ -272,8 +320,44 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      // 예약하기 버튼
+
+                      // ──────────────────────
+                      //          메모 영역
+                      // ──────────────────────
+                      const SizedBox(height: 24),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _memoText.isNotEmpty
+                                    ? _memoText
+                                    : '잊기 쉬운 내용을 남겨주세요!',
+                                style: TextStyle(
+                                  color:
+                                      _memoText.isNotEmpty
+                                          ? Colors.black
+                                          : Colors.grey,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit),
+                              onPressed: _showEditDialog,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // ─── 예약하기 버튼 ───
                       ElevatedButton(
                         onPressed: () async {
                           final type = c['type'];
@@ -301,22 +385,61 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                       const Divider(height: 32),
 
                       // ─── 정보 표시 영역 ───
-                      InfoRow(
-                        label: '주소',
-                        value: c['addr1'] ?? '정보없음',
-                        icon: Icons.location_on,
-                        color: Colors.teal,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InfoRow(
+                              label: '주소',
+                              value: c['addr1'] ?? '정보없음',
+                              icon: Icons.location_on,
+                              color: Colors.teal,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.copy, color: Colors.grey),
+                            onPressed: () {
+                              Clipboard.setData(
+                                ClipboardData(text: c['addr1'] ?? ''),
+                              );
+                              _showMsg('주소가 복사되었습니다.');
+                            },
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       _buildKakaoMap(c),
                       const SizedBox(height: 12),
-                      InfoRow(
-                        label: '전화번호',
-                        value: c['tel'] ?? '정보없음',
-                        icon: Icons.phone,
-                        color: Colors.teal,
-                        onTap: () => _launchDialer(c['tel'] ?? ''),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InfoRow(
+                              label: '전화번호',
+                              value: c['tel'] ?? '정보없음',
+                              icon: Icons.phone,
+                              color: Colors.teal,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.copy, color: Colors.grey),
+                            onPressed: () {
+                              Clipboard.setData(
+                                ClipboardData(text: c['tel'] ?? ''),
+                              );
+                              _showMsg('전화번호가 복사되었습니다.');
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.phone_outlined,
+                              color: Colors.teal,
+                            ),
+                            onPressed: () {
+                              _launchDialer(c['tel'] ?? '');
+                            },
+                          ),
+                        ],
                       ),
+                      const Divider(height: 32),
                       InfoRow(
                         label: '캠핑장 유형',
                         value: c['type'] ?? '정보없음',
@@ -343,7 +466,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                       // ─── 상세 정보 ───
                       Text(
                         '기본 정보',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),

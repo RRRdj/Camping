@@ -4,7 +4,7 @@ import '../campground_data.dart';
 import 'camping_info_screen.dart';
 import '../repositories/real_time_availability_repository.dart';
 import '../repositories/campground_repository.dart';
-import '../services/camp_util_service.dart';
+import '../services/camp_map_html_service.dart';
 
 class BookmarkScreen extends StatefulWidget {
   final Map<String, bool> bookmarked;
@@ -25,7 +25,7 @@ class BookmarkScreen extends StatefulWidget {
 class _BookmarkScreenState extends State<BookmarkScreen> {
   final _availRepo = RealTimeAvailabilityRepository();
   final _campRepo = CampgroundRepository();
-  final _util = CampUtilService();
+  final _util = CampMapHtmlService();
 
   @override
   Widget build(BuildContext context) {

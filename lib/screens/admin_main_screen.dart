@@ -1,3 +1,5 @@
+// lib/screens/admin_dashboard_screen.dart
+
 import 'package:flutter/material.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
@@ -22,20 +24,33 @@ class AdminDashboardScreen extends StatelessWidget {
             icon: Icons.reviews,
             onTap: () => Navigator.pushNamed(context, '/admin/reviews'),
           ),
+          _buildMenuCard(
+            context,
+            title: '사용자 관리', // ← 추가된 부분
+            icon: Icons.people,
+            onTap: () => Navigator.pushNamed(context, '/admin/users'),
+          ),
           // 필요 시 다른 메뉴도 계속 추가 가능
         ],
       ),
     );
   }
 
-  Widget _buildMenuCard(BuildContext context,
-      {required String title, required IconData icon, required VoidCallback onTap}) {
+  Widget _buildMenuCard(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: ListTile(
         leading: Icon(icon, color: Colors.teal),
-        title: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: onTap,
       ),

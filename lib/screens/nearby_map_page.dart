@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../repositories/camp_map_repository.dart';
-import '../services/map_html_service.dart';
+import '../services/camp_map_html_service.dart';
 import 'camping_info_screen.dart';
 
 class NearbyMapPage extends StatefulWidget {
@@ -21,7 +21,7 @@ class NearbyMapPage extends StatefulWidget {
 
 class _NearbyMapPageState extends State<NearbyMapPage> {
   final _repo = CampMapRepository();
-  final _html = MapHtmlService();
+  final _html = CampMapHtmlService();
   final _searchCtrl = TextEditingController();
   late InAppWebViewController _web;
   double? _lat, _lng;
@@ -72,7 +72,7 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
 
   void _reload() {
     if (_lat == null || _lng == null) return;
-    final html = _html.buildHtml(
+    final html = _html.interactiveMapHtml(
       lat: _lat!,
       lng: _lng!,
       camps: _filtered,
