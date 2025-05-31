@@ -1,3 +1,5 @@
+// lib/screens/reservation_info_screen.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -12,10 +14,16 @@ class ReservationInfoScreen extends StatefulWidget {
 class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
   final _idController = TextEditingController();
   final _pwController = TextEditingController();
+  final _memoController = TextEditingController();
 
   String _campName = '캠핑장';
   String _contentId = '없음';
+  String _campType = ''; // API에서 받은 campType
+  late bool _isNational; // campType.contains('국립') 판별
   String _reservationWarning = '로딩 중...';
+
+  static const _nationalDocId = 'national_login';
+  // 국립 캠핑장 전용으로 고정된 문서 ID
 
   @override
   void initState() {
@@ -23,16 +31,19 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
       if (args != null) {
         setState(() {
           _campName = args['campName'] ?? _campName;
           _contentId = args['contentId'] ?? _contentId;
+          _campType = args['campType'] ?? '';
+          _isNational = _campType.contains('국립');
           if (args.containsKey('reservationWarning')) {
             _reservationWarning = args['reservationWarning'] as String;
           }
         });
         _loadSavedReservationInfo();
-        // Firestore에서 campName 기준으로 불러오도록 수정
+        _loadSavedMemo();
         if (!args.containsKey('reservationWarning')) {
           _loadReservationWarning();
         }
@@ -40,27 +51,60 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
     });
   }
 
+  /// 로그인 정보 불러오기 (국립은 고정 doc, 지자체는 contentId 기반)
   Future<void> _loadSavedReservationInfo() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final docSnap =
+    final base = FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+    if (_isNational) {
+      final doc =
+          await base
+              .collection('reservation_national')
+              .doc(_nationalDocId)
+              .get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        setState(() {
+          _idController.text = data['loginId'] ?? '';
+          _pwController.text = data['loginPassword'] ?? '';
+        });
+      }
+    } else {
+      final doc =
+          await base.collection('reservation_info').doc(_contentId).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        setState(() {
+          _idController.text = data['reservationUserId'] ?? '';
+          _pwController.text = data['reservationPassword'] ?? '';
+        });
+      }
+    }
+  }
+
+  /// 추가 메모 불러오기 (변경 없음)
+  Future<void> _loadSavedMemo() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc =
         await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
-            .collection('reservation_info')
+            .collection('reservation_memos')
             .doc(_contentId)
             .get();
 
-    if (docSnap.exists) {
-      final data = docSnap.data()!;
+    if (doc.exists) {
       setState(() {
-        _idController.text = data['reservationUserId'] ?? '';
-        _pwController.text = data['reservationPassword'] ?? '';
+        _memoController.text = doc.data()?['memo'] ?? '';
       });
     }
   }
 
+  /// 예약 시 주의사항 불러오기 (변경 없음)
   Future<void> _loadReservationWarning() async {
     try {
       final doc =
@@ -93,6 +137,7 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
   void dispose() {
     _idController.dispose();
     _pwController.dispose();
+    _memoController.dispose();
     super.dispose();
   }
 
@@ -110,6 +155,7 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
             ),
             const SizedBox(height: 24),
 
+            // 🔐 로그인 정보
             const Text(
               '🔐 로그인 정보',
               style: TextStyle(fontWeight: FontWeight.bold),
@@ -143,10 +189,9 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
                     return;
                   }
 
-                  final reservationUserId = _idController.text.trim();
-                  final reservationPassword = _pwController.text.trim();
-                  if (reservationUserId.isEmpty ||
-                      reservationPassword.isEmpty) {
+                  final id = _idController.text.trim();
+                  final pw = _pwController.text.trim();
+                  if (id.isEmpty || pw.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('아이디와 비밀번호를 모두 입력하세요.')),
                     );
@@ -154,19 +199,35 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
                   }
 
                   final now = DateTime.now();
-                  await FirebaseFirestore.instance
+                  final base = FirebaseFirestore.instance
                       .collection('users')
-                      .doc(user.uid)
-                      .collection('reservation_info')
-                      .doc(_contentId)
-                      .set({
-                        'campName': _campName,
-                        'contentId': _contentId,
-                        'reservationUserId': reservationUserId,
-                        'reservationPassword': reservationPassword,
-                        'savedAt': now,
-                        'email': user.email ?? '',
-                      });
+                      .doc(user.uid);
+
+                  if (_isNational) {
+                    // 국립 캠핑장: 항상 같은 문서에 저장
+                    await base
+                        .collection('reservation_national')
+                        .doc(_nationalDocId)
+                        .set({
+                          'campName': _campName,
+                          'loginId': id,
+                          'loginPassword': pw,
+                          'savedAt': now,
+                        });
+                  } else {
+                    // 지자체 캠핑장: contentId로 구분
+                    await base
+                        .collection('reservation_info')
+                        .doc(_contentId)
+                        .set({
+                          'campName': _campName,
+                          'contentId': _contentId,
+                          'reservationUserId': id,
+                          'reservationPassword': pw,
+                          'savedAt': now,
+                          'email': user.email ?? '',
+                        });
+                  }
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('예약 정보가 저장되었습니다.')),
@@ -184,7 +245,6 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
             ),
             const SizedBox(height: 8),
             Text(_reservationWarning),
-            // '메모 저장' 버튼이 제거되었습니다.
           ],
         ),
       ),

@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:share_plus/share_plus.dart'; // ★ share_plus 임포트
 import 'package:camping/screens/camping_reservation_screen.dart';
 import 'package:camping/screens/reservation_info_screen.dart';
 import 'package:camping/widgets/expandable_text.dart';
@@ -60,18 +61,42 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
   String? _contentId;
   String? _userNickname;
 
+  // ─── (1) 메모 로드 함수 추가 ───
+  Future<void> _loadSavedMemo() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || _contentId == null || _contentId!.isEmpty) return;
+
+    final snap =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('reservation_memos')
+            .doc(_contentId)
+            .get();
+
+    if (snap.exists) {
+      setState(() => _memoText = (snap.data()?['memo'] ?? '') as String);
+    }
+  }
+
+  // ─── (2) initState 안에서 캠핑장 정보 로드 후 메모도 함께 로드 ───
   @override
   void initState() {
     super.initState();
     _bookmarked = widget.isBookmarked;
+
     _campFuture = _repo.getCamp(widget.campName);
     _imagesFuture = _campFuture.then((doc) async {
       final data = doc.data()!;
       final cid = data['contentId']?.toString() ?? '';
       _contentId = cid;
+
+      await _loadSavedMemo(); // ← 추가 : 저장된 메모 불러오기
+
       final firstUrl = data['firstImageUrl'] as String?;
       return _service.fetchImages(cid, firstUrl);
     });
+
     _loadUserNickname();
   }
 
@@ -117,7 +142,22 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
             ],
           ),
     );
+
     if (result != null) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && _contentId != null && _contentId!.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('reservation_memos')
+            .doc(_contentId)
+            .set({
+              'campName': widget.campName,
+              'contentId': _contentId,
+              'memo': result,
+              'savedAt': DateTime.now(),
+            });
+      }
       setState(() => _memoText = result);
       _showMsg('메모가 저장되었습니다.');
     }
@@ -196,11 +236,20 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
             if (snap.hasError || !snap.hasData || !snap.data!.exists) {
               return const Center(child: Text('캠핑장 정보를 불러올 수 없습니다.'));
             }
+
+            // Firestore에서 가져온 캠핑장 데이터
             final c = snap.data!.data()!;
             final isAvail = widget.available > 0;
             final amenities =
                 (c['amenities'] as List<dynamic>?)?.cast<String>() ?? [];
             _contentId ??= c['contentId']?.toString() ?? '';
+
+            // 캠핑장 위도/경도 (문자열 → double 파싱)
+            final double latitude =
+                double.tryParse((c['mapY'] as String?) ?? '') ?? 0.0;
+            final double longitude =
+                double.tryParse((c['mapX'] as String?) ?? '') ?? 0.0;
+            final String name = c['name'] as String? ?? widget.campName;
 
             return CustomScrollView(
               slivers: [
@@ -208,6 +257,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                   pinned: true,
                   expandedHeight: 250,
                   backgroundColor: Colors.teal,
+
+                  // ─── 여기에 SliverAppBar의 actions에 공유 버튼 추가 ───
                   flexibleSpace: FlexibleSpaceBar(
                     background: FutureBuilder<List<String>>(
                       future: _imagesFuture,
@@ -226,26 +277,43 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                     ),
                   ),
                 ),
+
                 SliverPadding(
                   padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset + 12),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      // ─── 캠핑장 제목, 공유, 즐겨찾기 ───
+                      // ─── 캠핑장 제목, 공유 아이콘, 즐겨찾기 ───
+                      // ─── ② 제목 · 공유 · 북마크 Row (통째로 교체) ───
                       Row(
                         children: [
                           Expanded(
                             child: Text(
-                              c['name'] as String,
+                              name,
                               style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
+                          // 공유 버튼 ― 북마크 왼쪽
                           IconButton(
                             icon: const Icon(Icons.share, color: Colors.teal),
-                            onPressed: () => _showMsg('공유 기능 준비중'),
+                            tooltip: '카카오맵 링크 공유',
+                            onPressed: () async {
+                              final encodedName = Uri.encodeComponent(name);
+                              final kakaoMapUrl =
+                                  'https://map.kakao.com/link/to/$encodedName,$latitude,$longitude';
+                              try {
+                                await Share.share(
+                                  kakaoMapUrl,
+                                  subject: '$name 위치 공유',
+                                );
+                              } catch (e) {
+                                _showMsg('공유를 진행할 수 없습니다: $e');
+                              }
+                            },
                           ),
+                          // 북마크 버튼
                           IconButton(
                             icon: Icon(
                               _bookmarked
@@ -255,11 +323,12 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                             ),
                             onPressed: () {
                               setState(() => _bookmarked = !_bookmarked);
-                              widget.onToggleBookmark(widget.campName);
+                              widget.onToggleBookmark(name);
                             },
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 12),
                       // ─── 예약 상태 ───
                       Text(
@@ -284,7 +353,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                                 MaterialPageRoute(
                                   builder:
                                       (_) => CampingReservationScreen(
-                                        camp: {'name': c['name']},
+                                        camp: {'name': name},
                                       ),
                                 ),
                               );
@@ -301,7 +370,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                                   builder: (_) => const ReservationInfoScreen(),
                                   settings: RouteSettings(
                                     arguments: {
-                                      'campName': c['name'],
+                                      'campName': name,
                                       'contentId': _contentId,
                                       'campType': c['type'],
                                     },
@@ -549,7 +618,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     final lat = double.tryParse(c['mapY'] as String? ?? '') ?? 0.0;
     final lng = double.tryParse(c['mapX'] as String? ?? '') ?? 0.0;
     final html = '''
-<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"upgrade-insecure-requests\"><style>html,body,#map{margin:0;padding:0;width:100%;height:100%;}</style><script>(function(){const _old=document.write.bind(document);document.write=function(s){_old(s.replace(/http:\\/\\/t1\\.daumcdn\\.net/g,'https://t1.daumcdn.net'));};})();</script><script src=\"https://dapi.kakao.com/v2/maps/sdk.js?appkey=4807f3322c219648ee8e346b3bfea1d7\"></script></head><body><div id=\"map\"></div><script>const coord=new kakao.maps.LatLng($lat,$lng);const map=new kakao.maps.Map(document.getElementById('map'),{center:coord,level:3});const marker=new kakao.maps.Marker({position:coord});marker.setMap(map);kakao.maps.event.addListener(map,'idle',function(){map.setCenter(coord);});</script></body></html>''';
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests"><style>html,body,#map{margin:0;padding:0;width:100%;height:100%;}</style><script>(function(){const _old=document.write.bind(document);document.write=function(s){_old(s.replace(/http:\\/\\/t1\\.daumcdn\\.net/g,'https://t1.daumcdn.net'));};})();</script><script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4807f3322c219648ee8e346b3bfea1d7"></script></head><body><div id="map"></div><script>const coord=new kakao.maps.LatLng($lat,$lng);const map=new kakao.maps.Map(document.getElementById('map'),{center:coord,level:3});const marker=new kakao.maps.Marker({position:coord});marker.setMap(map);kakao.maps.event.addListener(map,'idle',()=>map.setCenter(coord));</script></body></html>''';
 
     return SizedBox(
       height: 200,
