@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
 
 class AlarmManageScreen extends StatelessWidget {
   const AlarmManageScreen({Key? key}) : super(key: key);
@@ -100,7 +100,10 @@ class AlarmManageScreen extends StatelessWidget {
         .doc(uid)
         .collection('alarms')
         .doc(docId)
-        .update({'date': newDate, 'isNotified': false});
+        .update({
+          'date': DateFormat('yyyy-MM-dd').format(newDate),
+          'isNotified': false,
+        });
 
     ScaffoldMessenger.of(
       context,

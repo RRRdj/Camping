@@ -59,7 +59,7 @@ class CampMapHtmlService {
     #container.view_roadview #roadview{display:block;flex:0 0 50%;height:50%;}
     #roadviewControl{position:absolute;top:10px;left:10px;z-index:7;
       background:#fff;border:1px solid #ccc;border-radius:4px;
-      padding:12px 20px;font-size:28px;cursor:pointer;}
+      padding:12px 20px;font-size:36px;cursor:pointer;}
     #roadviewControl.active{background:#007aff;color:#fff;}
     #rvClose{display:none;position:absolute;top:10px;right:10px;z-index:7;
       width:28px;height:28px;border:1px solid #ccc;border-radius:50%;

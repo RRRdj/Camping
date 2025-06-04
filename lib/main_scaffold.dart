@@ -8,10 +8,9 @@ import 'campground_data.dart';
 import 'screens/camping_home_screen.dart';
 import 'screens/bookmark_screen.dart';
 import 'screens/my_info_screen.dart';
-import 'screens/nearby_map_page.dart';  // ← 지도 페이지 위젯을 import
+import 'screens/nearby_map_page.dart'; // ← 지도 페이지 위젯을 import
 
 import 'package:camping/tools/save_fcm_token.dart'; // ✅ 추가
-
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -22,7 +21,7 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _selectedIndex = 0;
-  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));  // ← 추가
+  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1)); // ← 추가
   Map<String, bool> bookmarked = {};
 
   final _auth = FirebaseAuth.instance;
@@ -39,16 +38,15 @@ class _MainScaffoldState extends State<MainScaffold> {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    final snap = await _fire
-        .collection('users')
-        .doc(user.uid)
-        .collection('bookmarks')
-        .get();
+    final snap =
+        await _fire
+            .collection('users')
+            .doc(user.uid)
+            .collection('bookmarks')
+            .get();
 
     setState(() {
-      bookmarked = {
-        for (var doc in snap.docs) doc.id: true,
-      };
+      bookmarked = {for (var doc in snap.docs) doc.id: true};
     });
   }
 
@@ -86,19 +84,19 @@ class _MainScaffoldState extends State<MainScaffold> {
   Widget build(BuildContext context) {
     // 4개의 스크린 리스트: 홈, 지도, 북마크, 내 정보
     final screens = [
-    CampingHomeScreen(
-                bookmarked: bookmarked,
-                onToggleBookmark: toggleBookmark,
-                // 홈에서 선택한 날짜를 내려줍니다.
-                selectedDate: _selectedDate,
-                onDateChanged: (newDate) {
-                setState(() => _selectedDate = newDate);
-            },
-          ),
-    NearbyMapPage(
+      CampingHomeScreen(
+        bookmarked: bookmarked,
+        onToggleBookmark: toggleBookmark,
+        // 홈에서 선택한 날짜를 내려줍니다.
+        selectedDate: _selectedDate,
+        onDateChanged: (newDate) {
+          setState(() => _selectedDate = newDate);
+        },
+      ),
+      NearbyMapPage(
         key: ValueKey(_selectedDate),
-        bookmarked: bookmarked,            // ← 추가
-        onToggleBookmark: toggleBookmark,  // ← 추가
+        bookmarked: bookmarked, // ← 추가
+        onToggleBookmark: toggleBookmark, // ← 추가
         selectedDate: _selectedDate,
       ),
       BookmarkScreen(
@@ -107,36 +105,24 @@ class _MainScaffoldState extends State<MainScaffold> {
         onToggleBookmark: toggleBookmark,
         selectedDate: _selectedDate,
       ),
-      const MyInfoScreen(),
+      MyInfoScreen(),
     ];
 
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: screens,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: screens),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.teal,
         unselectedItemColor: Colors.grey,
         onTap: (i) => setState(() => _selectedIndex = i),
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: '홈',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: '지도',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: '지도'),
           BottomNavigationBarItem(
             icon: Icon(Icons.bookmark_border),
             label: '북마크',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: '내 정보',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: '내 정보'),
         ],
       ),
     );

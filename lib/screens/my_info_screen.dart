@@ -1,15 +1,15 @@
-// lib/screens/my_info_screen.dart (수정된 부분 포함)
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:camping/screens/edit_profile_screen.dart';
-import 'package:camping/screens/setting_screen.dart';
-import 'package:camping/screens/my_review_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
+import 'edit_profile_screen.dart';
+import 'setting_screen.dart';
+import 'my_review_screen.dart';
 
 class MyInfoScreen extends StatelessWidget {
-  const MyInfoScreen({Key? key}) : super(key: key);
+  MyInfoScreen({Key? key}) : super(key: key);
+
+  final _authSvc = AuthService();
 
   @override
   Widget build(BuildContext context) {
@@ -46,8 +46,8 @@ class MyInfoScreen extends StatelessWidget {
                       CircleAvatar(
                         radius: 50,
                         backgroundImage:
-                            data['photoUrl'] != null && data['photoUrl'] != ''
-                                ? NetworkImage(data['photoUrl']!)
+                            (data['photoUrl'] ?? '').isNotEmpty
+                                ? NetworkImage(data['photoUrl'])
                                 : null,
                         backgroundColor: Colors.grey[200],
                       ),
@@ -81,57 +81,50 @@ class MyInfoScreen extends StatelessWidget {
                 const Divider(),
                 const SizedBox(height: 16),
 
-                _buildOptionItem(
+                _item(
                   context,
                   icon: Icons.person,
                   title: '개인정보 수정',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const EditProfileScreen(),
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => EditProfileScreen()),
                       ),
-                    );
-                  },
                 ),
-                _buildOptionItem(
+                _item(
                   context,
                   icon: Icons.star,
                   title: '후기 관리',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => MyReviewsScreen()),
-                    );
-                  },
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => MyReviewsScreen()),
+                      ),
                 ),
-                // ✅ 알림 관리 항목 추가
-                _buildOptionItem(
+                _item(
                   context,
                   icon: Icons.notifications_active,
                   title: '알림 관리',
-                  onTap: () {
-                    Navigator.pushNamed(context, '/alarm_manage');
-                  },
+                  onTap: () => Navigator.pushNamed(context, '/alarm_manage'),
                 ),
-                _buildOptionItem(
+                _item(
                   context,
                   icon: Icons.settings,
                   title: '환경설정',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                    );
-                  },
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => SettingsScreen()),
+                      ),
                 ),
-                // 회원 탈퇴 옵션 추가
-                _buildOptionItem(
+
+                /*──────── 회원 탈퇴 ────────*/
+                _item(
                   context,
                   icon: Icons.delete_forever,
                   title: '회원 탈퇴',
-                  onTap: () {
-                    showDialog(
+                  onTap: () async {
+                    final ok = await showDialog<bool>(
                       context: context,
                       builder:
                           (ctx) => AlertDialog(
@@ -141,64 +134,11 @@ class MyInfoScreen extends StatelessWidget {
                             ),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.pop(ctx),
+                                onPressed: () => Navigator.pop(ctx, false),
                                 child: const Text('취소'),
                               ),
                               TextButton(
-                                onPressed: () async {
-                                  Navigator.pop(ctx);
-                                  showDialog(
-                                    context: context,
-                                    barrierDismissible: false,
-                                    builder:
-                                        (_) => const Center(
-                                          child: CircularProgressIndicator(),
-                                        ),
-                                  );
-                                  final uid = user.uid;
-                                  // Firestore 문서 삭제
-                                  await FirebaseFirestore.instance
-                                      .collection('users')
-                                      .doc(uid)
-                                      .delete();
-                                  // Storage 이미지 삭제
-                                  try {
-                                    await FirebaseStorage.instance
-                                        .ref()
-                                        .child('userProfileImages/$uid.jpg')
-                                        .delete();
-                                  } catch (_) {}
-                                  // Auth 사용자 삭제
-                                  try {
-                                    await user.delete();
-                                  } on FirebaseAuthException catch (e) {
-                                    if (e.code == 'requires-recent-login') {
-                                      Navigator.pop(context);
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            '최근 로그인 인증이 필요합니다. 다시 로그인해주세요.',
-                                          ),
-                                        ),
-                                      );
-                                      await FirebaseAuth.instance.signOut();
-                                      Navigator.pushReplacementNamed(
-                                        context,
-                                        '/',
-                                      );
-                                      return;
-                                    }
-                                  }
-                                  await FirebaseAuth.instance.signOut();
-                                  Navigator.pushReplacementNamed(context, '/');
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('회원 탈퇴가 완료되었습니다.'),
-                                    ),
-                                  );
-                                },
+                                onPressed: () => Navigator.pop(ctx, true),
                                 child: const Text(
                                   '탈퇴',
                                   style: TextStyle(color: Colors.red),
@@ -207,24 +147,47 @@ class MyInfoScreen extends StatelessWidget {
                             ],
                           ),
                     );
+                    if (ok != true) return;
+
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder:
+                          (_) =>
+                              const Center(child: CircularProgressIndicator()),
+                    );
+
+                    try {
+                      await _authSvc.deleteAccount();
+                      if (!context.mounted) return;
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        '/',
+                        (_) => false,
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('회원 탈퇴가 완료되었습니다.')),
+                      );
+                    } on FirebaseAuthException catch (e) {
+                      Navigator.pop(context); // 로딩 다이얼로그 닫기
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(e.message ?? '탈퇴 실패')),
+                      );
+                    }
                   },
+                  iconColor: Colors.red,
                 ),
+
                 const Divider(height: 32),
-                _buildOptionItem(
+
+                /*──────── 로그아웃 ────────*/
+                _item(
                   context,
                   icon: Icons.logout,
                   title: '로그아웃',
                   onTap: () async {
-                    // 1) SharedPreferences에서 자동 로그인 정보 삭제
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.remove('autoLogin');
-                    await prefs.remove('savedEmail');
-                    await prefs.remove('savedPw');
-
-                    // 2) Firebase 로그아웃
-                    await FirebaseAuth.instance.signOut();
-
-                    // 3) 로그인 화면으로 이동
+                    await _authSvc.signOut();
+                    if (!context.mounted) return;
                     Navigator.pushReplacementNamed(context, '/');
                   },
                 ),
@@ -236,24 +199,17 @@ class MyInfoScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildOptionItem(
-    BuildContext context, {
+  /* 공통 ListTile 위젯 */
+  Widget _item(
+    BuildContext ctx, {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: icon == Icons.delete_forever ? Colors.red : Colors.teal,
-      ),
-      title: Text(title, style: const TextStyle(fontSize: 16)),
-      trailing: const Icon(
-        Icons.arrow_forward_ios,
-        size: 16,
-        color: Colors.grey,
-      ),
-      onTap: onTap,
-    );
-  }
+    Color iconColor = Colors.teal,
+  }) => ListTile(
+    leading: Icon(icon, color: iconColor),
+    title: Text(title, style: const TextStyle(fontSize: 16)),
+    trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+    onTap: onTap,
+  );
 }
