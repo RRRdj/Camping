@@ -1,16 +1,16 @@
-import 'dart:convert'; // ← 추가
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 
 const _greenMarker =
-    'https://img.icons8.com/?size=100&id=L7DH4c3i9coo&format=png&color=228BE6';
+    'https://img.icons8.com/?size=50&id=L7DH4c3i9coo&format=png&color=228BE6';
 const _redMarker =
-    'https://img.icons8.com/?size=100&id=kqCJWucG32lh&format=png&color=FA5252';
+    'https://img.icons8.com/?size=50&id=kqCJWucG32lh&format=png&color=FA5252';
 
-/// ──────────────────────────────────────────────────────────
+/// ──────────────────────────────────
 /// Camp 모델
-/// ──────────────────────────────────────────────────────────
+/// ──────────────────────────────────
 class Camp {
   final String contentId;
   final String name;
@@ -59,7 +59,7 @@ class Camp {
     );
   }
 
-  /// 카카오맵 마커 + 인포윈도우 JS ― 4배 확대, 핀 가리지 않기
+  /// 카카오맵 마커 + 인포윈도우 JS
   String toMarkerJs(DateTime selectedDate) {
     final m = selectedDate.month;
     final d = selectedDate.day;
@@ -89,7 +89,6 @@ class Camp {
     ${m}월&nbsp;${d}일&nbsp;$tag&nbsp;($available/$total)
   </span>
 
-  <!-- 버튼 영역: 가로 2-분할 -->
   <div style="display:flex; gap:4px;">
     <button style="flex:1; padding:6px; border:none; background:#007aff; color:#fff;
                    border-radius:4px; cursor:pointer;"
@@ -108,19 +107,19 @@ class Camp {
 
     final encoded = jsonEncode(html);
 
-    /* ④ 마커 + 인포윈도우 JS */
+    /* ④ 마커 + 인포윈도우 JS (클러스터러에 등록) */
     return """
 (function(){
   var pos = new kakao.maps.LatLng($lat, $lng);
   var marker = new kakao.maps.Marker({
     position: pos,
     image: new kakao.maps.MarkerImage(
-      '$markerImg',                    // ← 상태별 이미지
+      '$markerImg',
       new kakao.maps.Size(72,105),
       { offset: new kakao.maps.Point(36,105) }
     )
   });
-  marker.setMap(map);
+  clusterer.addMarker(marker);   // ← 변경
 
   var info = new kakao.maps.InfoWindow({ content: $encoded });
   kakao.maps.event.addListener(marker, 'click', function(){
@@ -131,9 +130,9 @@ class Camp {
   }
 }
 
-/// ──────────────────────────────────────────────────────────
+/// ──────────────────────────────────
 /// 위치 + Firestore 리포지토리
-/// ──────────────────────────────────────────────────────────
+/// ──────────────────────────────────
 class CampMapRepository {
   final _fire = FirebaseFirestore.instance;
 

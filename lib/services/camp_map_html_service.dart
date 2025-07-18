@@ -1,4 +1,3 @@
-// services/camp_map_html_service.dart
 import 'package:intl/intl.dart';
 import '../repositories/camp_map_repository.dart';
 
@@ -6,10 +5,8 @@ import '../repositories/camp_map_repository.dart';
 class CampMapHtmlService {
   /* ─── 날짜·예약 유틸 ─── */
 
-  /// 파이어스토어 key 용(yyyy-MM-dd)
   String formatDateKey(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
 
-  /// 캠핑장 예약 페이지 URL
   String reservationUrl(String type, String? resveUrl) =>
       type == '국립'
           ? 'https://reservation.knps.or.kr/reservation/searchSimpleCampReservation.do'
@@ -17,11 +14,11 @@ class CampMapHtmlService {
 
   /* ─── 지도 HTML 생성 ─── */
 
-  /// (1) 단일 좌표만 표시하는 가벼운 지도
+  /// (1) 단일 좌표 지도
   String singleMarkerMapHtml(double lat, double lng) =>
       _htmlShell(_singleMarkerScript(lat, lng));
 
-  /// (2) 현재 위치 + 캠핑장 마커 + 로드뷰 토글이 포함된 풀-버전 지도
+  /// (2) 현재 위치 + 캠핑장 마커 + 로드뷰
   String interactiveMapHtml({
     required double lat,
     required double lng,
@@ -30,11 +27,11 @@ class CampMapHtmlService {
   }) {
     final buf = StringBuffer();
 
-    // 현재 위치 마커
+    // 현재 위치 마커 (지도에 직접 올림)
     buf.writeln(
       '(function(){new kakao.maps.Marker({position:new kakao.maps.LatLng($lat,$lng)}).setMap(map);}());',
     );
-    // 캠핑장 마커들
+    // 캠핑장 마커들 (클러스터러에 등록)
     for (final camp in camps) buf.writeln(camp.toMarkerJs(date));
 
     return _htmlShell(_interactiveScript(lat, lng, buf.toString()));
@@ -42,7 +39,6 @@ class CampMapHtmlService {
 
   /* ─── 내부 헬퍼 ─── */
 
-  /// Kakao Maps SDK & 공통 스타일까지 포함한 HTML 틀
   String _htmlShell(String bodyScript) => '''
 <!DOCTYPE html>
 <html lang="ko"><head>
@@ -51,7 +47,6 @@ class CampMapHtmlService {
   <style>
     html,body{margin:0;padding:0;width:100%;height:100%;}
     #map,#roadview{width:100%;height:100%;}
-    /* 인터랙티브 모드 전용 추가 스타일 */
     #container{display:flex;flex-direction:column;width:100%;height:100%;transition:.3s;}
     #mapWrapper{flex:1 1 100%;position:relative;transition:.3s;}
     #roadview{display:none;flex:0 0 0;height:0;overflow:hidden;transition:.3s;}
@@ -67,13 +62,12 @@ class CampMapHtmlService {
     #container.view_roadview #rvClose{display:block;}
   </style>
   <script>
-    // http→https 이미지 패치
     (function(){
       const o=document.write.bind(document);
       document.write=s=>o(s.replace(/http:\\/\\/t1\\.daumcdn\\.net/g,'https://t1.daumcdn.net'));
     })();
   </script>
-  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4807f3322c219648ee8e346b3bfea1d7"></script>
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4807f3322c219648ee8e346b3bfea1d7&libraries=clusterer"></script>
 </head>
 <body>
   $bodyScript
@@ -81,19 +75,25 @@ class CampMapHtmlService {
 </html>
 ''';
 
-  /// (a) 단순 지도에 들어갈 스크립트
+  /// (a) 단일 좌표 스크립트
   String _singleMarkerScript(double lat, double lng) => '''
 <div id="map"></div>
 <script>
   const coord = new kakao.maps.LatLng($lat,$lng);
   const map   = new kakao.maps.Map(document.getElementById('map'),
                 {center:coord,level:3});
-  new kakao.maps.Marker({position:coord}).setMap(map);
+  const clusterer = new kakao.maps.MarkerClusterer({
+        map: map,
+        averageCenter: true,
+        minLevel: 10   
+    });
+  const marker = new kakao.maps.Marker({position:coord});
+  clusterer.addMarker(marker);
   kakao.maps.event.addListener(map,'idle',()=>map.setCenter(coord));
 </script>
 ''';
 
-  /// (b) 로드뷰 토글이 있는 인터랙티브 지도 스크립트
+  /// (b) 인터랙티브 지도 스크립트 (화사한 클러스터 스타일)
   String _interactiveScript(double lat, double lng, String markersJs) => '''
 <div id="container">
   <div id="mapWrapper">
@@ -110,27 +110,82 @@ class CampMapHtmlService {
         map       = new kakao.maps.Map(
                       document.getElementById('map'),
                       {center:new kakao.maps.LatLng($lat,$lng),level:3}),
+        clusterer = new kakao.maps.MarkerClusterer({
+          map: map,
+          averageCenter: true,
+          minLevel: 5,
+          gridSize: 100,
+          styles: [
+            {
+              // 작은 클러스터: 0~9
+              width: '70px', height: '70px',
+              background: 'rgba(102, 204, 255, 0.7)',
+              border: '3px solid #fff',
+              borderRadius: '50%',
+              color: '#004085',
+              fontSize: '36px',
+              fontWeight: '600',
+              textAlign: 'center',
+              lineHeight: '50px',
+              display: 'flex',               // ← flex 정렬 사용
+              alignItems: 'center',          // ← 수직 중앙 정렬
+              justifyContent: 'center'       // ← 수평 중앙 정렬
+            },
+            {
+              // 중간 클러스터: 10~49
+              width: '100px', height: '100px',
+              background: 'rgba(51, 153, 255, 0.7)',
+              border: '3px solid #fff',
+              borderRadius: '50%',
+              color: '#fff',
+              fontSize: '42px',
+              fontWeight: '600',
+              textAlign: 'center',
+              lineHeight: '60px',
+              display: 'flex',               // ← flex 정렬 사용
+              alignItems: 'center',          // ← 수직 중앙 정렬
+              justifyContent: 'center'       // ← 수평 중앙 정렬
+            },
+            {
+              // 큰 클러스터: 50+
+              width: '130px', height: '130px',
+              background: 'rgba(0, 123, 255, 0.7)',
+              border: '3px solid #fff',
+              borderRadius: '50%',
+              color: '#fff',
+              fontSize: '48px',
+              fontWeight: '600',
+              textAlign: 'center',
+              lineHeight: '70px',
+              display: 'flex',               // ← flex 정렬 사용
+              alignItems: 'center',          // ← 수직 중앙 정렬
+              justifyContent: 'center'       // ← 수평 중앙 정렬
+            }
+          ]
+        }),
         rv        = new kakao.maps.Roadview(document.getElementById('roadview')),
         rvClient  = new kakao.maps.RoadviewClient(),
         button    = document.getElementById('roadviewControl'),
         rvMarker  = new kakao.maps.Marker({
-                      image:new kakao.maps.MarkerImage(
-                        'https://t1.daumcdn.net/localimg/localimages/07/2018/pc/roadview_minimap_wk_2018.png',
-                        new kakao.maps.Size(26,46),
-                        {spriteSize:new kakao.maps.Size(1666,168),
-                         spriteOrigin:new kakao.maps.Point(705,114),
-                         offset:new kakao.maps.Point(13,46)}),
-                      position:map.getCenter(),draggable:true});
+          image:new kakao.maps.MarkerImage(
+            'https://t1.daumcdn.net/localimg/localimages/07/2018/pc/roadview_minimap_wk_2018.png',
+            new kakao.maps.Size(10,20),
+            {spriteSize:new kakao.maps.Size(1666,168),
+             spriteOrigin:new kakao.maps.Point(705,114),
+             offset:new kakao.maps.Point(10,40)}),
+          position:map.getCenter(),draggable:true
+        });
   let overlayOn=false;
 
   function toggleRoadviewUI(){
     if(button.classList.toggle('active')){
       overlayOn=true;
       map.addOverlayMapTypeId(kakao.maps.MapTypeId.ROADVIEW);
-      rvMarker.setMap(map);
       container.classList.add('view_roadview');
       moveTo(map.getCenter());
-    }else closeRoadview();
+    } else {
+      closeRoadview();
+    }
   }
   function closeRoadview(){
     overlayOn=false;
@@ -146,21 +201,22 @@ class CampMapHtmlService {
   }
 
   kakao.maps.event.addListener(rv,'position_changed',()=>{
-    const pos=rv.getPosition();
+    const pos = rv.getPosition();
     map.setCenter(pos);
     if(overlayOn) rvMarker.setPosition(pos);
   });
   kakao.maps.event.addListener(rvMarker,'dragend',e=>moveTo(e.latLng));
   kakao.maps.event.addListener(map,'click',e=>{
     if(!overlayOn) return;
-    rvMarker.setPosition(e.latLng); moveTo(e.latLng);
+    rvMarker.setPosition(e.latLng);
+    moveTo(e.latLng);
   });
 
-  /// 외부에서 호출해 특정 좌표로 바로 로드뷰 열기
-  window.openRoadviewAt=(lat,lng)=>{
+  window.openRoadviewAt = (lat, lng) => {
     if(!button.classList.contains('active')) toggleRoadviewUI();
-    const pos=new kakao.maps.LatLng(lat,lng);
-    rvMarker.setPosition(pos); moveTo(pos);
+    const pos = new kakao.maps.LatLng(lat, lng);
+    rvMarker.setPosition(pos);
+    moveTo(pos);
   };
 
   /* 캠핑장 마커들 */

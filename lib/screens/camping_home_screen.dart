@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'dart:math' as math; // 거리 계산용
 import 'camping_info_screen.dart';
 
 class CampingHomeScreen extends StatefulWidget {
@@ -24,7 +25,34 @@ class CampingHomeScreen extends StatefulWidget {
 class _CampingHomeScreenState extends State<CampingHomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // 실제로 검색에 반영된 값
+  // -- 내 위치(임시 하드코딩) -----------------------
+  static const _userLat = 36.1190;
+  static const _userLng = 128.3446;
+
+  double _deg2rad(double d) => d * (math.pi / 180);
+  double _distanceKm(double lat1, double lon1, double lat2, double lon2) {
+    const r = 6371.0;
+    final dLat = _deg2rad(lat2 - lat1);
+    final dLon = _deg2rad(lon2 - lon1);
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_deg2rad(lat1)) *
+            math.cos(_deg2rad(lat2)) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return r * c;
+  }
+
+  double _campDistance(Map<String, dynamic> camp) {
+    final lat = double.tryParse(camp['mapY']?.toString() ?? '');
+    final lon = double.tryParse(camp['mapX']?.toString() ?? '');
+    if (lat == null || lon == null) return double.infinity;
+    return _distanceKm(_userLat, _userLng, lat, lon);
+  }
+  // ------------------------------------------------
+
+  // 검색·필터 상태
   String? _appliedKeyword;
   List<String> _appliedRegion = [];
   List<String> _appliedType = [];
@@ -32,7 +60,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   List<String> _appliedEnv = [];
   List<String> _appliedAmenity = [];
 
-  // 드로어 안에서만 수정되는 임시 값
   String? _filterKeyword;
   List<String> _filterRegion = [];
   List<String> _filterType = [];
@@ -56,127 +83,32 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   }
 
   Widget _buildFilterDrawer(BuildContext context) {
-    final regions =
-        _camps
-            .map((c) => (c['location'] as String).split(' ').first)
-            .toSet()
-            .toList()
-          ..sort();
-
-    final types =
-        _camps.map((c) => c['type'] as String).toSet().toList()..sort();
-    final duties =
-        _camps
-            .map((c) => c['inDuty'] as String? ?? '')
-            .expand((s) => s.split(',').where((s) => s.isNotEmpty))
-            .toSet()
-            .toList()
-          ..sort();
-    final envs =
-        _camps
-            .map((c) => c['lctCl'] as String? ?? '')
-            .where((e) => e.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort();
-    final amenities =
-        _camps
-            .expand(
-              (c) => (c['amenities'] as List<dynamic>? ?? []).cast<String>(),
-            )
-            .toSet()
-            .toList()
-          ..sort();
-
+    // Drawer with fixed header and scrollable content
     return Drawer(
       width: 320,
       child: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            16,
-            16,
-            16,
-            MediaQuery.of(context).padding.bottom + 16,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Center(
-                child: Text(
-                  '검색 필터',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1) 고정된 상단바
+            Container(
+              height: 56,
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
               ),
-              const SizedBox(height: 16),
-              _buildSection(
-                title: '지역',
-                options: regions,
-                selected: _filterRegion,
-                onToggle:
-                    (opt) => setState(() {
-                      if (_filterRegion.contains(opt))
-                        _filterRegion.remove(opt);
-                      else
-                        _filterRegion.add(opt);
-                    }),
-              ),
-              _buildSection(
-                title: '캠핑장 유형',
-                options: types,
-                selected: _filterType,
-                onToggle:
-                    (opt) => setState(() {
-                      if (_filterType.contains(opt))
-                        _filterType.remove(opt);
-                      else
-                        _filterType.add(opt);
-                    }),
-              ),
-              _buildSection(
-                title: '야영장 구분',
-                options: duties,
-                selected: _filterDuty,
-                onToggle:
-                    (opt) => setState(() {
-                      if (_filterDuty.contains(opt))
-                        _filterDuty.remove(opt);
-                      else
-                        _filterDuty.add(opt);
-                    }),
-              ),
-              _buildSection(
-                title: '환경',
-                options: envs,
-                selected: _filterEnv,
-                onToggle:
-                    (opt) => setState(() {
-                      if (_filterEnv.contains(opt))
-                        _filterEnv.remove(opt);
-                      else
-                        _filterEnv.add(opt);
-                    }),
-              ),
-              _buildSection(
-                title: '편의시설',
-                options: amenities,
-                selected: _filterAmenity,
-                onToggle:
-                    (opt) => setState(() {
-                      if (_filterAmenity.contains(opt))
-                        _filterAmenity.remove(opt);
-                      else
-                        _filterAmenity.add(opt);
-                    }),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Row(
                 children: [
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.refresh, color: Colors.teal),
-                    label: const Text(
-                      '초기화',
-                      style: TextStyle(color: Colors.teal),
-                    ),
+                  // 왼쪽 타이틀
+                  Text(
+                    '검색 필터',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  Spacer(),
+                  // 오른쪽 초기화 아이콘
+                  IconButton(
+                    icon: Icon(Icons.refresh, color: Colors.teal),
+                    tooltip: '초기화',
                     onPressed:
                         () => setState(() {
                           _filterKeyword = null;
@@ -187,33 +119,136 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                           _filterAmenity.clear();
                         }),
                   ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
+                  // 오른쪽 적용 아이콘
+                  IconButton(
+                    icon: Icon(Icons.check, color: Colors.teal),
+                    tooltip: '적용',
                     onPressed: () {
                       setState(() {
                         _appliedKeyword = _filterKeyword;
-                        _appliedRegion = List<String>.from(_filterRegion);
-                        _appliedType = List<String>.from(_filterType);
-                        _appliedDuty = List<String>.from(_filterDuty);
-                        _appliedEnv = List<String>.from(_filterEnv);
-                        _appliedAmenity = List<String>.from(_filterAmenity);
+                        _appliedRegion = List.from(_filterRegion);
+                        _appliedType = List.from(_filterType);
+                        _appliedDuty = List.from(_filterDuty);
+                        _appliedEnv = List.from(_filterEnv);
+                        _appliedAmenity = List.from(_filterAmenity);
                       });
                       Navigator.pop(context);
                     },
-                    child: const Text(
-                      '적용',
-                      style: TextStyle(color: Colors.white),
-                    ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+
+            // 2) 필터 섹션(스크롤 가능)
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  MediaQuery.of(context).padding.bottom + 16,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSection(
+                      title: '지역',
+                      options:
+                          _camps
+                              .map(
+                                (c) =>
+                                    (c['location'] as String).split(' ').first,
+                              )
+                              .toSet()
+                              .toList()
+                            ..sort(),
+                      selected: _filterRegion,
+                      onToggle:
+                          (opt) => setState(() {
+                            _filterRegion.contains(opt)
+                                ? _filterRegion.remove(opt)
+                                : _filterRegion.add(opt);
+                          }),
+                    ),
+                    _buildSection(
+                      title: '캠핑장 유형',
+                      options:
+                          _camps
+                              .map((c) => c['type'] as String)
+                              .toSet()
+                              .toList()
+                            ..sort(),
+                      selected: _filterType,
+                      onToggle:
+                          (opt) => setState(() {
+                            _filterType.contains(opt)
+                                ? _filterType.remove(opt)
+                                : _filterType.add(opt);
+                          }),
+                    ),
+                    _buildSection(
+                      title: '야영장 구분',
+                      options:
+                          _camps
+                              .map(
+                                (c) =>
+                                    (c['inDuty'] as String? ?? '').split(','),
+                              )
+                              .expand((e) => e)
+                              .where((s) => s.isNotEmpty)
+                              .toSet()
+                              .toList()
+                            ..sort(),
+                      selected: _filterDuty,
+                      onToggle:
+                          (opt) => setState(() {
+                            _filterDuty.contains(opt)
+                                ? _filterDuty.remove(opt)
+                                : _filterDuty.add(opt);
+                          }),
+                    ),
+                    _buildSection(
+                      title: '환경',
+                      options:
+                          _camps
+                              .map((c) => c['lctCl'] as String? ?? '')
+                              .where((e) => e.isNotEmpty)
+                              .toSet()
+                              .toList()
+                            ..sort(),
+                      selected: _filterEnv,
+                      onToggle:
+                          (opt) => setState(() {
+                            _filterEnv.contains(opt)
+                                ? _filterEnv.remove(opt)
+                                : _filterEnv.add(opt);
+                          }),
+                    ),
+                    _buildSection(
+                      title: '편의시설',
+                      options:
+                          _camps
+                              .expand(
+                                (c) =>
+                                    (c['amenities'] as List<dynamic>? ?? [])
+                                        .cast<String>(),
+                              )
+                              .toSet()
+                              .toList()
+                            ..sort(),
+                      selected: _filterAmenity,
+                      onToggle:
+                          (opt) => setState(() {
+                            _filterAmenity.contains(opt)
+                                ? _filterAmenity.remove(opt)
+                                : _filterAmenity.add(opt);
+                          }),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -279,11 +314,11 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
             onPressed: () {
               setState(() {
                 _filterKeyword = _appliedKeyword;
-                _filterRegion = List<String>.from(_appliedRegion);
-                _filterType = List<String>.from(_appliedType);
-                _filterDuty = List<String>.from(_appliedDuty);
-                _filterEnv = List<String>.from(_appliedEnv);
-                _filterAmenity = List<String>.from(_appliedAmenity);
+                _filterRegion = List.from(_appliedRegion);
+                _filterType = List.from(_appliedType);
+                _filterDuty = List.from(_appliedDuty);
+                _filterEnv = List.from(_appliedEnv);
+                _filterAmenity = List.from(_appliedAmenity);
               });
               _scaffoldKey.currentState?.openEndDrawer();
             },
@@ -292,6 +327,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
       ),
       body: Column(
         children: [
+          // 1) 검색창
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
@@ -331,6 +367,8 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
               ],
             ),
           ),
+
+          // 2) 실시간 데이터 + 개수 표시
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream:
@@ -361,6 +399,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                           doc.data()! as Map<String, dynamic>;
                     }
 
+                    // 필터링
                     final filtered =
                         camps.where((c) {
                           final name = (c['name'] as String).toLowerCase();
@@ -395,161 +434,222 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                               (c['amenities'] as List<dynamic>? ?? [])
                                   .cast<String>();
                           if (_appliedAmenity.isNotEmpty &&
-                              !_appliedAmenity.every(
-                                (a) => amens.contains(a),
-                              )) {
+                              !_appliedAmenity.every(amens.contains)) {
                             return false;
                           }
                           return true;
                         }).toList();
 
-                    if (filtered.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          '검색결과가 없습니다',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
-                      );
-                    }
+                    // 정렬(거리순)
+                    filtered.sort(
+                      (a, b) => _campDistance(a).compareTo(_campDistance(b)),
+                    );
 
-                    filtered.sort((a, b) {
-                      final aAv =
-                          availabilityMap[a['name']]?[dateKey]?['available']
-                              as int? ??
-                          (a['available'] as int? ?? 0);
-                      final bAv =
-                          availabilityMap[b['name']]?[dateKey]?['available']
-                              as int? ??
-                          (b['available'] as int? ?? 0);
-                      return bAv.compareTo(aAv);
-                    });
+                    //  검색된 개수
+                    final count = filtered.length;
 
-                    return ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      itemCount: filtered.length,
-                      itemBuilder: (ctx4, i) {
-                        final c = filtered[i];
-                        final aMap =
-                            availabilityMap[c['name']]?[dateKey]
-                                as Map<String, dynamic>?;
-                        final avail =
-                            aMap?['available'] as int? ??
-                            (c['available'] as int? ?? 0);
-                        final total =
-                            aMap?['total'] as int? ?? (c['total'] as int? ?? 0);
-                        final isAvail = avail > 0;
-
-                        return Opacity(
-                          opacity: isAvail ? 1 : 0.4,
-                          child: InkWell(
-                            onTap:
-                                () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (_) => CampingInfoScreen(
-                                          campName: c['name'],
-                                          available: avail,
-                                          total: total,
-                                          isBookmarked:
-                                              widget.bookmarked[c['name']] ==
-                                              true,
-                                          onToggleBookmark:
-                                              widget.onToggleBookmark,
-                                          selectedDate: widget.selectedDate,
-                                        ),
-                                  ),
-                                ),
-                            child: Card(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Row(
-                                  children: [
-                                    if (c['firstImageUrl'] != null &&
-                                        (c['firstImageUrl'] as String)
-                                            .isNotEmpty)
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Image.network(
-                                          c['firstImageUrl'],
-                                          width: 60,
-                                          height: 60,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      )
-                                    else
-                                      const Icon(
-                                        Icons.park,
-                                        size: 48,
-                                        color: Colors.teal,
-                                      ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            c['name'],
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '${c['location']} | ${c['type']}',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            isAvail
-                                                ? '예약 가능 ($avail/$total)'
-                                                : '예약 마감 ($avail/$total)',
-                                            style: TextStyle(
-                                              color:
-                                                  isAvail
-                                                      ? Colors.green
-                                                      : Colors.red,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: Icon(
-                                        (widget.bookmarked[c['name']] ?? false)
-                                            ? Icons.bookmark
-                                            : Icons.bookmark_border,
-                                        color:
-                                            (widget.bookmarked[c['name']] ??
-                                                    false)
-                                                ? Colors.red
-                                                : Colors.grey,
-                                      ),
-                                      onPressed:
-                                          () => widget.onToggleBookmark(
-                                            c['name'],
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                    // 결과 UI: 상단에 개수, 하단에 리스트 혹은 ‘검색결과가 없습니다’
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ◀ 검색창 바로 아래에 카운트 표시
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Text(
+                            '$count개의 캠핑장이 검색되었어요!',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                        );
-                      },
+                        ),
+
+                        // 결과 목록 영역
+                        Expanded(
+                          child:
+                              filtered.isEmpty
+                                  ? const Center(
+                                    child: Text(
+                                      '검색결과가 없습니다',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  )
+                                  : ListView.builder(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    itemCount: filtered.length,
+                                    itemBuilder: (ctx4, i) {
+                                      final c = filtered[i];
+                                      final aMap =
+                                          availabilityMap[c['name']]?[dateKey]
+                                              as Map<String, dynamic>?;
+                                      final avail =
+                                          aMap?['available'] as int? ??
+                                          (c['available'] as int? ?? 0);
+                                      final total =
+                                          aMap?['total'] as int? ??
+                                          (c['total'] as int? ?? 0);
+                                      final isAvail = avail > 0;
+                                      final distance = _campDistance(
+                                        c,
+                                      ).toStringAsFixed(1);
+
+                                      return Opacity(
+                                        opacity: isAvail ? 1 : 0.4,
+                                        child: InkWell(
+                                          onTap:
+                                              () => Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder:
+                                                      (_) => CampingInfoScreen(
+                                                        campName: c['name'],
+                                                        available: avail,
+                                                        total: total,
+                                                        isBookmarked:
+                                                            widget
+                                                                .bookmarked[c['name']] ==
+                                                            true,
+                                                        onToggleBookmark:
+                                                            widget
+                                                                .onToggleBookmark,
+                                                        selectedDate:
+                                                            widget.selectedDate,
+                                                      ),
+                                                ),
+                                              ),
+                                          child: Card(
+                                            margin: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 8,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(12),
+                                              child: Row(
+                                                children: [
+                                                  if (c['firstImageUrl'] !=
+                                                          null &&
+                                                      (c['firstImageUrl']
+                                                              as String)
+                                                          .isNotEmpty)
+                                                    ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                      child: Image.network(
+                                                        c['firstImageUrl'],
+                                                        width: 60,
+                                                        height: 60,
+                                                        fit: BoxFit.cover,
+                                                      ),
+                                                    )
+                                                  else
+                                                    const Icon(
+                                                      Icons.park,
+                                                      size: 48,
+                                                      color: Colors.teal,
+                                                    ),
+                                                  const SizedBox(width: 16),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          c['name'],
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 16,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 4,
+                                                        ),
+                                                        Text(
+                                                          '${c['location']} | ${c['type']}',
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 12,
+                                                                color:
+                                                                    Colors.grey,
+                                                              ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 4,
+                                                        ),
+                                                        Text(
+                                                          '거리: $distance km',
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 12,
+                                                                color:
+                                                                    Colors.grey,
+                                                              ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 6,
+                                                        ),
+                                                        Text(
+                                                          isAvail
+                                                              ? '예약 가능 ($avail/$total)'
+                                                              : '예약 마감 ($avail/$total)',
+                                                          style: TextStyle(
+                                                            color:
+                                                                isAvail
+                                                                    ? Colors
+                                                                        .green
+                                                                    : Colors
+                                                                        .red,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    icon: Icon(
+                                                      (widget.bookmarked[c['name']] ??
+                                                              false)
+                                                          ? Icons.bookmark
+                                                          : Icons
+                                                              .bookmark_border,
+                                                      color:
+                                                          (widget.bookmarked[c['name']] ??
+                                                                  false)
+                                                              ? Colors.red
+                                                              : Colors.grey,
+                                                    ),
+                                                    onPressed:
+                                                        () => widget
+                                                            .onToggleBookmark(
+                                                              c['name'],
+                                                            ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                        ),
+                      ],
                     );
                   },
                 );
