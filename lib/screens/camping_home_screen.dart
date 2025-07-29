@@ -3,6 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math; // 거리 계산용
 import 'camping_info_screen.dart';
+import 'prototype_screen.dart'; // 추가된 파일
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class CampingHomeScreen extends StatefulWidget {
   final Map<String, bool> bookmarked;
@@ -26,8 +29,18 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // -- 내 위치(임시 하드코딩) -----------------------
-  static const _userLat = 36.1190;
-  static const _userLng = 128.3446;
+  double _userLat = 36.1190;
+  double _userLng = 128.3446;
+  String _currentPlaceName = '구미시'; // ← 표시용 라벨
+
+  void updateUserLocation(String name, double lat, double lng) {
+    if (!mounted) return; // ← 위젯이 dispose된 상태면 setState 금지
+    setState(() {
+      _currentPlaceName = name;
+      _userLat = lat;
+      _userLng = lng;
+    });
+  }
 
   double _deg2rad(double d) => d * (math.pi / 180);
   double _distanceKm(double lat1, double lon1, double lat2, double lon2) {
@@ -49,6 +62,19 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     final lon = double.tryParse(camp['mapX']?.toString() ?? '');
     if (lat == null || lon == null) return double.infinity;
     return _distanceKm(_userLat, _userLng, lat, lon);
+  }
+
+  Future<void> _loadHomeLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString('home');
+    if (json != null) {
+      final data = jsonDecode(json);
+      setState(() {
+        _currentPlaceName = data['n'];
+        _userLat = data['lat'];
+        _userLng = data['lng'];
+      });
+    }
   }
   // ------------------------------------------------
 
@@ -72,6 +98,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   @override
   void initState() {
     super.initState();
+    _loadHomeLocation();
     FirebaseFirestore.instance.collection('campgrounds').snapshots().listen((
       snap,
     ) {
@@ -132,7 +159,8 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                         _appliedEnv = List.from(_filterEnv);
                         _appliedAmenity = List.from(_filterAmenity);
                       });
-                      Navigator.pop(context);
+                      Navigator.pop(context); // 모달 닫기
+                      Navigator.pop(context); // 프로토타입 화면 닫기
                     },
                   ),
                 ],
@@ -309,6 +337,22 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
         title: Text('[ $dateLabel 캠핑장 현황 ]'),
         centerTitle: true,
         actions: [
+          // 프로토타입 화면으로 이동하는 버튼 추가
+          IconButton(
+            icon: Icon(Icons.developer_mode),
+            tooltip: '프로토타입 테스트',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (_) => PrototypeScreen(
+                        onLocationChange: updateUserLocation, // ← 여기에 콜백 전달
+                      ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.tune),
             onPressed: () {
@@ -453,17 +497,25 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // ◀ 검색창 바로 아래에 카운트 표시
+                        // 검색 결과 개수 + 현재 위치 표시
                         Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 8,
                           ),
-                          child: Text(
-                            '$count개의 캠핑장이 검색되었어요!',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          child: Row(
+                            children: [
+                              Text('$count개의 캠핑장이 검색되었어요!'),
+                              const SizedBox(width: 12),
+                              if (_currentPlaceName != null)
+                                Text(
+                                  '현위치 : $_currentPlaceName',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
 

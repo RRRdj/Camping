@@ -34,18 +34,27 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
 
   double? _lat, _lng;
   List<Camp> _camps = [], _filtered = [];
+  // 입력 중 추천 리스트
+  List<Camp> _suggestions = [];
 
   @override
   void initState() {
     super.initState();
     _init();
-    _searchCtrl.addListener(_search);
+    // 입력 중 추천 목록 업데이트
+    _searchCtrl.addListener(_updateSuggestions);
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.removeListener(_updateSuggestions);
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   /// 초기화: 기본 좌표(구미) + 캠핑장 데이터 로드
   Future<void> _init() async {
     final camps = await _repo.fetchCamps(widget.selectedDate);
-
     if (!mounted) return;
     setState(() {
       _lat = _defaultLat;
@@ -58,18 +67,17 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
   /// '내 위치' 버튼 동작
   Future<void> _moveToCurrentLocation() async {
     try {
-      final pos = await _repo.currentPosition(); // 내부에서 권한 요청 & 서비스 OFF 처리
+      final pos = await _repo.currentPosition();
       if (!mounted) return;
       setState(() {
         _lat = pos.latitude;
         _lng = pos.longitude;
       });
       _reload();
-    } catch (_) {
-      // 위치 서비스 꺼져 있거나 권한 거부 시 아무 동작 없음
-    }
+    } catch (_) {}
   }
 
+  /// 검색 버튼 누를 때 호출
   void _search() {
     final q = _searchCtrl.text.trim().toLowerCase();
     setState(() {
@@ -83,8 +91,26 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                         c.region.toLowerCase().contains(q),
                   )
                   .toList();
+      _suggestions.clear(); // 검색 시 추천 목록 숨김
     });
     _reload();
+  }
+
+  /// 입력 중 캠핑장 이름/지역 추천
+  void _updateSuggestions() {
+    final q = _searchCtrl.text.trim().toLowerCase();
+    if (q.isEmpty) {
+      setState(() => _suggestions.clear());
+      return;
+    }
+    final matches = _camps.where(
+      (c) =>
+          c.name.toLowerCase().contains(q) ||
+          c.region.toLowerCase().contains(q),
+    );
+    setState(() {
+      _suggestions = matches.take(5).toList(); // 최대 5개
+    });
   }
 
   void _reload() {
@@ -109,13 +135,66 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
         children: [
           Padding(
             padding: const EdgeInsets.all(8),
-            child: TextField(
-              controller: _searchCtrl,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: '캠핑장명 또는 지역 검색',
-                border: OutlineInputBorder(),
-              ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchCtrl,
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search),
+                          hintText: '캠핑장명 또는 지역 검색',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _search,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                      child: const Icon(Icons.search),
+                    ),
+                  ],
+                ),
+                // 추천 리스트
+                if (_suggestions.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    child: ListView.builder(
+                      itemCount: _suggestions.length,
+                      itemBuilder: (context, idx) {
+                        final camp = _suggestions[idx];
+                        return ListTile(
+                          title: Text(camp.name),
+                          subtitle: Text(camp.region),
+                          onTap: () {
+                            // 선택한 캠핑장으로 중심 이동 후 검색
+                            setState(() {
+                              _lat = camp.lat;
+                              _lng = camp.lng;
+                              _searchCtrl.text = camp.name;
+                              _suggestions.clear();
+                            });
+                            _search();
+                          },
+                        );
+                      },
+                    ),
+                  ),
+              ],
             ),
           ),
           Expanded(
@@ -154,8 +233,6 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                     );
                   },
                 ),
-
-                // 우상단 '내 위치' 버튼
                 Positioned(
                   top: 12,
                   right: 12,
