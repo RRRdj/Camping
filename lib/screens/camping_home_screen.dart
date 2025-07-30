@@ -32,6 +32,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   double _userLat = 36.1190;
   double _userLng = 128.3446;
   String _currentPlaceName = '구미시'; // ← 표시용 라벨
+  bool _onlyAvailable = false; // ← 예약 가능한 캠핑장만 보기 여부
 
   void updateUserLocation(String name, double lat, double lng) {
     if (!mounted) return; // ← 위젯이 dispose된 상태면 setState 금지
@@ -481,6 +482,15 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                               !_appliedAmenity.every(amens.contains)) {
                             return false;
                           }
+                          if (_onlyAvailable) {
+                            final avail =
+                                (availabilityMap[c['name']]?[dateKey]?['available'] ??
+                                        c['available'])
+                                    as int? ??
+                                0;
+                            if (avail <= 0) return false;
+                          }
+
                           return true;
                         }).toList();
 
@@ -503,18 +513,39 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                             horizontal: 16,
                             vertical: 8,
                           ),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('$count개의 캠핑장이 검색되었어요!'),
-                              const SizedBox(width: 12),
-                              if (_currentPlaceName != null)
-                                Text(
-                                  '현위치 : $_currentPlaceName',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                  ),
+                              Row(
+                                children: [
+                                  Text('$count개의 캠핑장이 검색되었어요!'),
+                                  const SizedBox(width: 12),
+                                  if (_currentPlaceName.isNotEmpty)
+                                    Text(
+                                      '현위치 : $_currentPlaceName',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              CheckboxListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text(
+                                  '예약 가능한 캠핑장만 출력',
+                                  style: TextStyle(fontSize: 14),
                                 ),
+                                value: _onlyAvailable,
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() => _onlyAvailable = val);
+                                  }
+                                },
+                                controlAffinity:
+                                    ListTileControlAffinity.trailing,
+                              ),
                             ],
                           ),
                         ),

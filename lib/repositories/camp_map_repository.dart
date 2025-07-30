@@ -119,11 +119,13 @@ class Camp {
       { offset: new kakao.maps.Point(36,105) }
     )
   });
-  clusterer.addMarker(marker);   // ← 변경
+  clusterer.addMarker(marker);
 
   var info = new kakao.maps.InfoWindow({ content: $encoded });
-  kakao.maps.event.addListener(marker, 'click', function(){
-    info.getMap() ? info.close() : info.open(map, marker);
+
+  // 기존 info.getMap() 방식 삭제 → 전역 헬퍼 사용
+  kakao.maps.event.addListener(marker, 'click', function() {
+    openSingleInfo(info, marker);
   });
 })();
 """;

@@ -27,12 +27,15 @@ class CampMapHtmlService {
   }) {
     final buf = StringBuffer();
 
-    // 현재 위치 마커 (지도에 직접 올림)
+    // 현재 위치 마커
     buf.writeln(
       '(function(){new kakao.maps.Marker({position:new kakao.maps.LatLng($lat,$lng)}).setMap(map);}());',
     );
-    // 캠핑장 마커들 (클러스터러에 등록)
-    for (final camp in camps) buf.writeln(camp.toMarkerJs(date));
+
+    // 캠핑장 마커들
+    for (final camp in camps) {
+      buf.writeln(camp.toMarkerJs(date)); // toMarkerJs 내부에 openSingleInfo 호출
+    }
 
     return _htmlShell(_interactiveScript(lat, lng, buf.toString()));
   }
@@ -42,32 +45,32 @@ class CampMapHtmlService {
   String _htmlShell(String bodyScript) => '''
 <!DOCTYPE html>
 <html lang="ko"><head>
-  <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
-  <style>
-    html,body{margin:0;padding:0;width:100%;height:100%;}
-    #map,#roadview{width:100%;height:100%;}
-    #container{display:flex;flex-direction:column;width:100%;height:100%;transition:.3s;}
-    #mapWrapper{flex:1 1 100%;position:relative;transition:.3s;}
-    #roadview{display:none;flex:0 0 0;height:0;overflow:hidden;transition:.3s;}
-    #container.view_roadview #mapWrapper{flex:0 0 50%;}
-    #container.view_roadview #roadview{display:block;flex:0 0 50%;height:50%;}
-    #roadviewControl{position:absolute;top:10px;left:10px;z-index:7;
-      background:#fff;border:1px solid #ccc;border-radius:4px;
-      padding:12px 20px;font-size:36px;cursor:pointer;}
-    #roadviewControl.active{background:#007aff;color:#fff;}
-    #rvClose{display:none;position:absolute;top:10px;right:10px;z-index:7;
-      width:28px;height:28px;border:1px solid #ccc;border-radius:50%;
-      background:#fff;font-size:16px;line-height:26px;text-align:center;cursor:pointer;}
-    #container.view_roadview #rvClose{display:block;}
-  </style>
-  <script>
-    (function(){
-      const o=document.write.bind(document);
-      document.write=s=>o(s.replace(/http:\\/\\/t1\\.daumcdn\\.net/g,'https://t1.daumcdn.net'));
-    })();
-  </script>
-  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4807f3322c219648ee8e346b3bfea1d7&libraries=clusterer"></script>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+<style>
+  html,body{margin:0;padding:0;width:100%;height:100%;}
+  #map,#roadview{width:100%;height:100%;}
+  #container{display:flex;flex-direction:column;width:100%;height:100%;transition:.3s;}
+  #mapWrapper{flex:1 1 100%;position:relative;transition:.3s;}
+  #roadview{display:none;flex:0 0 0;height:0;overflow:hidden;transition:.3s;}
+  #container.view_roadview #mapWrapper{flex:0 0 50%;}
+  #container.view_roadview #roadview{display:block;flex:0 0 50%;height:50%;}
+  #roadviewControl{position:absolute;top:10px;left:10px;z-index:7;
+    background:#fff;border:1px solid #ccc;border-radius:4px;
+    padding:12px 20px;font-size:36px;cursor:pointer;}
+  #roadviewControl.active{background:#007aff;color:#fff;}
+  #rvClose{display:none;position:absolute;top:10px;right:10px;z-index:7;
+    width:28px;height:28px;border:1px solid #ccc;border-radius:50%;
+    background:#fff;font-size:16px;line-height:26px;text-align:center;cursor:pointer;}
+  #container.view_roadview #rvClose{display:block;}
+</style>
+<script>
+  (function(){
+    const o=document.write.bind(document);
+    document.write=s=>o(s.replace(/http:\\/\\/t1\\.daumcdn\\.net/g,'https://t1.daumcdn.net'));
+  })();
+</script>
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4807f3322c219648ee8e346b3bfea1d7&libraries=clusterer"></script>
 </head>
 <body>
   $bodyScript
@@ -85,7 +88,7 @@ class CampMapHtmlService {
   const clusterer = new kakao.maps.MarkerClusterer({
         map: map,
         averageCenter: true,
-        minLevel: 10   
+        minLevel: 10
     });
   const marker = new kakao.maps.Marker({position:coord});
   clusterer.addMarker(marker);
@@ -93,7 +96,7 @@ class CampMapHtmlService {
 </script>
 ''';
 
-  /// (b) 인터랙티브 지도 스크립트 (화사한 클러스터 스타일)
+  /// (b) 인터랙티브 지도 스크립트
   String _interactiveScript(double lat, double lng, String markersJs) => '''
 <div id="container">
   <div id="mapWrapper">
@@ -116,51 +119,15 @@ class CampMapHtmlService {
           minLevel: 5,
           gridSize: 100,
           styles: [
-            {
-              // 작은 클러스터: 0~9
-              width: '70px', height: '70px',
-              background: 'rgba(102, 204, 255, 0.7)',
-              border: '3px solid #fff',
-              borderRadius: '50%',
-              color: '#004085',
-              fontSize: '36px',
-              fontWeight: '600',
-              textAlign: 'center',
-              lineHeight: '50px',
-              display: 'flex',               // ← flex 정렬 사용
-              alignItems: 'center',          // ← 수직 중앙 정렬
-              justifyContent: 'center'       // ← 수평 중앙 정렬
-            },
-            {
-              // 중간 클러스터: 10~49
-              width: '100px', height: '100px',
-              background: 'rgba(51, 153, 255, 0.7)',
-              border: '3px solid #fff',
-              borderRadius: '50%',
-              color: '#fff',
-              fontSize: '42px',
-              fontWeight: '600',
-              textAlign: 'center',
-              lineHeight: '60px',
-              display: 'flex',               // ← flex 정렬 사용
-              alignItems: 'center',          // ← 수직 중앙 정렬
-              justifyContent: 'center'       // ← 수평 중앙 정렬
-            },
-            {
-              // 큰 클러스터: 50+
-              width: '130px', height: '130px',
-              background: 'rgba(0, 123, 255, 0.7)',
-              border: '3px solid #fff',
-              borderRadius: '50%',
-              color: '#fff',
-              fontSize: '48px',
-              fontWeight: '600',
-              textAlign: 'center',
-              lineHeight: '70px',
-              display: 'flex',               // ← flex 정렬 사용
-              alignItems: 'center',          // ← 수직 중앙 정렬
-              justifyContent: 'center'       // ← 수평 중앙 정렬
-            }
+            {width:'70px', height:'70px', background:'rgba(102,204,255,0.7)', border:'3px solid #fff',
+             borderRadius:'50%', color:'#004085', fontSize:'36px', fontWeight:'600',
+             display:'flex', alignItems:'center', justifyContent:'center'},
+            {width:'100px', height:'100px', background:'rgba(51,153,255,0.7)', border:'3px solid #fff',
+             borderRadius:'50%', color:'#fff', fontSize:'42px', fontWeight:'600',
+             display:'flex', alignItems:'center', justifyContent:'center'},
+            {width:'130px', height:'130px', background:'rgba(0,123,255,0.7)', border:'3px solid #fff',
+             borderRadius:'50%', color:'#fff', fontSize:'48px', fontWeight:'600',
+             display:'flex', alignItems:'center', justifyContent:'center'}
           ]
         }),
         rv        = new kakao.maps.Roadview(document.getElementById('roadview')),
@@ -175,11 +142,15 @@ class CampMapHtmlService {
              offset:new kakao.maps.Point(10,40)}),
           position:map.getCenter(),draggable:true
         });
-  let overlayOn=false;
 
-  function toggleRoadviewUI(){
-    if(button.classList.toggle('active')){
-      overlayOn=true;
+  // ★ 한 번에 하나만 열리는 InfoWindow 관리용 전역 변수
+  let openInfoWindow = null;
+
+  // ===== 로드뷰 토글 처리 =====
+  let overlayOn = false;
+  function toggleRoadviewUI() {
+    if (button.classList.toggle('active')) {
+      overlayOn = true;
       map.addOverlayMapTypeId(kakao.maps.MapTypeId.ROADVIEW);
       container.classList.add('view_roadview');
       moveTo(map.getCenter());
@@ -187,39 +158,47 @@ class CampMapHtmlService {
       closeRoadview();
     }
   }
-  function closeRoadview(){
-    overlayOn=false;
+  function closeRoadview() {
+    overlayOn = false;
     button.classList.remove('active');
     map.removeOverlayMapTypeId(kakao.maps.MapTypeId.ROADVIEW);
     rvMarker.setMap(null);
     container.classList.remove('view_roadview');
   }
-  function moveTo(pos){
-    rvClient.getNearestPanoId(pos,50,panoId=>{
-      if(panoId) rv.setPanoId(panoId,pos);
+  function moveTo(pos) {
+    rvClient.getNearestPanoId(pos, 50, panoId => {
+      if (panoId) rv.setPanoId(panoId, pos);
     });
   }
 
-  kakao.maps.event.addListener(rv,'position_changed',()=>{
+  kakao.maps.event.addListener(rv, 'position_changed', () => {
     const pos = rv.getPosition();
     map.setCenter(pos);
-    if(overlayOn) rvMarker.setPosition(pos);
+    if (overlayOn) rvMarker.setPosition(pos);
   });
-  kakao.maps.event.addListener(rvMarker,'dragend',e=>moveTo(e.latLng));
-  kakao.maps.event.addListener(map,'click',e=>{
-    if(!overlayOn) return;
+  kakao.maps.event.addListener(rvMarker, 'dragend', e => moveTo(e.latLng));
+  kakao.maps.event.addListener(map, 'click', e => {
+    if (!overlayOn) return;
     rvMarker.setPosition(e.latLng);
     moveTo(e.latLng);
   });
 
+  // ★ 헬퍼: 이전 InfoWindow 닫고 새 InfoWindow만 열기
+  function openSingleInfo(infowindow, marker) {
+    if (openInfoWindow) openInfoWindow.close();
+    infowindow.open(map, marker);
+    openInfoWindow = infowindow;
+  }
+
+  // 외부에서 로드뷰 강제 호출
   window.openRoadviewAt = (lat, lng) => {
-    if(!button.classList.contains('active')) toggleRoadviewUI();
+    if (!button.classList.contains('active')) toggleRoadviewUI();
     const pos = new kakao.maps.LatLng(lat, lng);
     rvMarker.setPosition(pos);
     moveTo(pos);
   };
 
-  /* 캠핑장 마커들 */
+  /* 캠핑장 마커들 생성(JavaScript) */
   $markersJs
 </script>
 ''';
