@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<network-security-config>
-    <!-- 도메인 전체에 대해 cleartext(HTTP) 허용 -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">t1.daumcdn.net</domain>
-    </domain-config>
-    <!-- 필요시 추가 도메인도 이와 같은 방식으로 허용 -->
-</network-security-config>
