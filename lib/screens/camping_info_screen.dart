@@ -1,6 +1,7 @@
 // lib/screens/camping_info_screen.dart
 // ignore_for_file: library_private_types_in_public_api
 
+import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -9,14 +10,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../repositories/camp_repository.dart';
 import '../services/go_camping_service.dart';
 import '../widgets/amenity_section.dart';
 import '../widgets/expandable_text.dart';
 import '../widgets/info_row.dart';
+
 import '../widgets/review_form.dart';
 import '../widgets/review_section.dart';
+
 
 // ★ 새로 만든 위젯들
 import '../widgets/memo_box.dart';
@@ -53,6 +57,9 @@ class CampingInfoScreen extends StatefulWidget {
 class _CampingInfoScreenState extends State<CampingInfoScreen> {
   final _repo = CampRepository();
   final _service = GoCampingService();
+
+  final ImagePicker _picker = ImagePicker();
+  List<XFile> _pickedImages = [];
 
   late Future<DocumentSnapshot<Map<String, dynamic>>> _campFuture;
   late Future<List<String>> _imagesFuture;
@@ -201,6 +208,13 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     );
     _showMsg('${DateFormat('M월 d일').format(selectedDate)} 알림이 설정되었습니다.');
   }
+  /*──────────────── 이미지 선택 ────────────────*/
+  Future<void> _pickImages() async {
+    final images = await _picker.pickMultiImage();
+    if (images != null && images.isNotEmpty) {
+      setState(() => _pickedImages = images);
+    }
+  }
 
   /*──────────────── 리뷰 등록 ────────────────*/
   Future<void> _submitReview() async {
@@ -214,16 +228,21 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
       campName: widget.campName,
       rating: _rating,
       content: _txtCtr.text.trim(),
+      imageFiles: _pickedImages,
     );
 
     _txtCtr.clear();
-    setState(() => _rating = 5);
+    setState(() {
+      _rating = 5;
+      _pickedImages = [];
+    });
     _showMsg('리뷰가 등록되었습니다.');
   }
 
   void _showMsg(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
+
 
   /*──────────────────────────────────────────*/
   @override
@@ -484,8 +503,14 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         rating: _rating,
                         userNickname: _userNickname,
                         onRating: (v) => setState(() => _rating = v),
+                        onPickImages: _pickImages,
+                        selectedImages: _pickedImages,
+                        onRemoveImage: (index) {
+                          setState(() => _pickedImages.removeAt(index));
+                        },
                         onSubmit: _submitReview,
                       ),
+
                       const Divider(height: 32),
                       ReviewSection(
                         repository: _repo,

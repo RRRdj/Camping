@@ -45,8 +45,7 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
       itemBuilder: (_, i) {
         final camp = bookmarkedCamps[i];
         final name = camp['name'] as String;
-        final location = camp['location'];
-        final type = camp['type'];
+        
 
         return FutureBuilder<Availability>(
           future: _availRepo.fetchAvailability(
@@ -76,6 +75,8 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                   (m) => m['name'] == name,
                   orElse: () => <String, dynamic>{},
                 );
+                final location = matching['location'] as String;
+                final type     = matching['type'] as String;
                 final img = (matching['firstImageUrl'] as String?) ?? '';
                 final hasImage = img.isNotEmpty;
 

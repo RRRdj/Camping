@@ -161,7 +161,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                         _appliedAmenity = List.from(_filterAmenity);
                       });
                       Navigator.pop(context); // 모달 닫기
-                      Navigator.pop(context); // 프로토타입 화면 닫기
+                      //Navigator.pop(context); // 프로토타입 화면 닫기
                     },
                   ),
                 ],
