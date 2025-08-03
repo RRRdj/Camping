@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 
@@ -19,6 +19,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:camping/screens/alarm_manage_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
+
 Future<void> requestNotificationPermission() async {
   final status = await Permission.notification.status;
   if (!status.isGranted) {
@@ -28,6 +30,7 @@ Future<void> requestNotificationPermission() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  kakao.KakaoSdk.init(nativeAppKey: 'd9d804fdec134c6b3df66f16b032ab4d');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await initializeDateFormatting('ko');
   await requestNotificationPermission();
@@ -70,26 +73,25 @@ class _AuthGateState extends State<AuthGate> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+    return StreamBuilder<fb.User?>(
+      stream: fb.FirebaseAuth.instance.authStateChanges(),
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        final user = snap.data;
+        final fb.User? user = snap.data;
         if (user == null) {
           _shownBlockDialog = false;
           return const LoginScreen();
         }
         // 사용자 문서에서 blocked 확인
         return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          future:
-              FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(user.uid)
-                  .get(),
+          future: FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get(),
           builder: (ctx2, snap2) {
             if (snap2.connectionState == ConnectionState.waiting) {
               return const Scaffold(
@@ -105,20 +107,19 @@ class _AuthGateState extends State<AuthGate> {
                   showDialog<void>(
                     context: context,
                     barrierDismissible: false,
-                    builder:
-                        (ctx3) => AlertDialog(
-                          title: const Text('차단된 사용자'),
-                          content: const Text('사용이 금지된 사용자입니다.'),
-                          actions: [
-                            TextButton(
-                              onPressed: () async {
-                                Navigator.pop(ctx3);
-                                await FirebaseAuth.instance.signOut();
-                              },
-                              child: const Text('확인'),
-                            ),
-                          ],
+                    builder: (ctx3) => AlertDialog(
+                      title: const Text('차단된 사용자'),
+                      content: const Text('사용이 금지된 사용자입니다.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () async {
+                            Navigator.pop(ctx3);
+                            await fb.FirebaseAuth.instance.signOut();
+                          },
+                          child: const Text('확인'),
                         ),
+                      ],
+                    ),
                   );
                 });
               }
