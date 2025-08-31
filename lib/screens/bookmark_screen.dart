@@ -126,57 +126,6 @@ Future<Map<String, dynamic>?> _fetchWeatherForDate(
   }
 }
 
-/* ───────────── 평균 별점 배지(실시간) ───────────── */
-class _LiveAverageRatingBadge extends StatelessWidget {
-  final String contentId;
-  const _LiveAverageRatingBadge({required this.contentId});
-
-  @override
-  Widget build(BuildContext context) {
-    if (contentId.isEmpty) return const SizedBox.shrink();
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('campground_reviews')
-          .doc(contentId)
-          .collection('reviews')
-          .snapshots(),
-      builder: (context, snap) {
-        if (!snap.hasData) return const SizedBox.shrink();
-        final docs = snap.data!.docs;
-        if (docs.isEmpty) return const SizedBox.shrink();
-
-        double sum = 0;
-        int cnt = 0;
-        for (final d in docs) {
-          final m = d.data() as Map<String, dynamic>;
-          final r = m['rating'];
-          if (r is num) {
-            sum += r.toDouble();
-            cnt++;
-          }
-        }
-        if (cnt == 0) return const SizedBox.shrink();
-        final avgText = (sum / cnt).toStringAsFixed(1);
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.amber.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: Colors.amber.withOpacity(0.4)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.star, size: 16, color: Colors.amber),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
 /* ───────────── 화면 본문 ───────────── */
 class BookmarkScreen extends StatefulWidget {
   final Map<String, bool> bookmarked;
@@ -227,7 +176,7 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
             final total = availData?.total ?? 0;
             final isAvail = available > 0;
 
-            // 여기서는 watchCamps를 한 번 불러 현재 스냅샷에서 상세정보를 가져와 쓴다.
+            // 캠핑장 상세 메타 (이미지/좌표/타입 등)
             return FutureBuilder<List<Map<String, dynamic>>>(
               future: _campRepo.watchCamps().first,
               builder: (context, snap2) {
@@ -260,6 +209,7 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                   builder: (context, wsnap) {
                     final weather = wsnap.data;
 
+                    // 전체 카드 탭 시 상세로 이동하도록 InkWell 추가
                     return Opacity(
                       opacity: isAvail ? 1 : 0.4,
                       child: Card(
@@ -267,110 +217,119 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // 이미지/아이콘
-                              if (hasImage)
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    img,
-                                    width: 60,
-                                    height: 60,
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                              else
-                                const Icon(Icons.park, size: 48, color: Colors.teal),
-                              const SizedBox(width: 16),
-
-                              // 본문
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // 제목 + 별점 (줄바꿈 허용, overflow 방지)
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 4,
-                                      crossAxisAlignment: WrapCrossAlignment.center,
-                                      children: [
-                                        Text(
-                                          name,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          softWrap: true,
-                                        ),
-                                        if (contentId.isNotEmpty)
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(Icons.star,
-                                                  size: 16, color: Colors.amber),
-                                              const SizedBox(width: 4),
-                                              // 평균 값 텍스트만 표시 (스트림으로 계산)
-                                              _AverageRatingText(contentId: contentId),
-                                            ],
-                                          ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '$location | $type',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    // 날씨 요약
-                                    if (weather != null)
-                                      Row(
-                                        children: [
-                                          Icon(_wmoIcon(weather['wmo'] as int?),
-                                              size: 18, color: Colors.teal),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              '${(weather['temp'] as double?)?.toStringAsFixed(1) ?? '-'}℃'
-                                                  '${weather['chanceOfRain'] != null ? ' · 강수확률 ${weather['chanceOfRain']}%' : ''}'
-                                                  ' · ${_wmoKoText(weather['wmo'] as int?)}',
-                                              style: const TextStyle(fontSize: 12),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    const SizedBox(height: 6),
-                                    // 예약 가능 상태
-                                    Text(
-                                      isAvail
-                                          ? '예약 가능 ($available/$total)'
-                                          : '예약 마감 ($available/$total)',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: isAvail ? Colors.green : Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CampingInfoScreen(
+                                  campName: name,
+                                  available: available,
+                                  total: total,
+                                  isBookmarked: widget.bookmarked[name] == true,
+                                  onToggleBookmark: widget.onToggleBookmark,
+                                  selectedDate: widget.selectedDate,
                                 ),
                               ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // 이미지/아이콘
+                                if (hasImage)
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.network(
+                                      img,
+                                      width: 60,
+                                      height: 60,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  )
+                                else
+                                  const Icon(Icons.park, size: 48, color: Colors.teal),
+                                const SizedBox(width: 16),
 
-                              // 북마크 해제 버튼
-                              IconButton(
-                                icon: const Icon(Icons.bookmark, color: Colors.red),
-                                onPressed: () {
-                                  widget.onToggleBookmark(name);
-                                  setState(() {});
-                                },
-                              ),
-                            ],
+                                // 본문
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // 제목 + 별점(있을 때만 노출)
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 4,
+                                        crossAxisAlignment: WrapCrossAlignment.center,
+                                        children: [
+                                          Text(
+                                            name,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            softWrap: true,
+                                          ),
+                                          if (contentId.isNotEmpty)
+                                            _AverageRatingIconText(contentId: contentId),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '$location | $type',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      // 날씨 요약
+                                      if (weather != null)
+                                        Row(
+                                          children: [
+                                            Icon(_wmoIcon(weather['wmo'] as int?),
+                                                size: 18, color: Colors.teal),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                '${(weather['temp'] as double?)?.toStringAsFixed(1) ?? '-'}℃'
+                                                    '${weather['chanceOfRain'] != null ? ' · 강수확률 ${weather['chanceOfRain']}%' : ''}'
+                                                    ' · ${_wmoKoText(weather['wmo'] as int?)}',
+                                                style: const TextStyle(fontSize: 12),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      const SizedBox(height: 6),
+                                      // 예약 가능 상태
+                                      Text(
+                                        isAvail
+                                            ? '예약 가능 ($available/$total)'
+                                            : '예약 마감 ($available/$total)',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isAvail ? Colors.green : Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // 북마크 해제 버튼
+                                IconButton(
+                                  icon: const Icon(Icons.bookmark, color: Colors.red),
+                                  onPressed: () {
+                                    widget.onToggleBookmark(name);
+                                    setState(() {});
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -386,15 +345,13 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
   }
 }
 
-/* ───────────── 평균 별점 숫자(Text) 전용 위젯 ─────────────
-   (작은 텍스트로만 노출해서 타이틀 줄 레이아웃이 깔끔하게 유지됩니다) */
-class _AverageRatingText extends StatelessWidget {
+/* ───────────── 별점이 있을 때만 (★ + 평균숫자) 노출하는 위젯 ───────────── */
+class _AverageRatingIconText extends StatelessWidget {
   final String contentId;
-  const _AverageRatingText({required this.contentId});
+  const _AverageRatingIconText({required this.contentId});
 
   @override
   Widget build(BuildContext context) {
-    if (contentId.isEmpty) return const SizedBox.shrink();
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('campground_reviews')
@@ -417,10 +374,18 @@ class _AverageRatingText extends StatelessWidget {
           }
         }
         if (cnt == 0) return const SizedBox.shrink();
+
         final avgText = (sum / cnt).toStringAsFixed(1);
-        return Text(
-          avgText,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.star, size: 16, color: Colors.amber),
+            const SizedBox(width: 4),
+            Text(
+              avgText,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+            ),
+          ],
         );
       },
     );
