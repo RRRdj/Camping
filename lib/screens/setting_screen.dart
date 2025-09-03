@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:camping/services/theme_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -58,24 +59,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(title: const Text('환경설정')),
       body: ListView(
         children: [
+          // 알림 스위치 (기존 그대로)
           SwitchListTile(
             title: const Text('푸시 알림 수신'),
             value: notificationEnabled,
             onChanged: (bool value) {
-              setState(() {
-                notificationEnabled = value;
-              });
+              setState(() => notificationEnabled = value);
               _updateNotificationSetting(value);
             },
           ),
-          // 다크 모드, 앱 버전은 그대로 둡니다
-          SwitchListTile(
-            title: const Text('다크 모드'),
-            value: false,
-            onChanged: (bool value) {
-              // 다크 모드는 추후 구현
+
+          // ✅ 다크 모드: 전역 ThemeService와 연결
+          ValueListenableBuilder<ThemeMode>(
+            valueListenable: ThemeService().themeMode,
+            builder: (_, mode, __) {
+              final isDark = mode == ThemeMode.dark;
+              return SwitchListTile(
+                title: const Text('다크 모드'),
+                subtitle: Text(
+                  mode == ThemeMode.system
+                      ? '시스템 설정을 따름'
+                      : (isDark ? '다크' : '라이트'),
+                ),
+                value: isDark,
+                onChanged: (bool value) {
+                  ThemeService().setDarkEnabled(value); // 전역 변경 + Firestore 저장
+                },
+                secondary: PopupMenuButton<String>(
+                  tooltip: '모드 선택',
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (v) {
+                    if (v == 'system') ThemeService().setSystem();
+                    if (v == 'light') ThemeService().setDarkEnabled(false);
+                    if (v == 'dark') ThemeService().setDarkEnabled(true);
+                  },
+                  itemBuilder:
+                      (_) => const [
+                        PopupMenuItem(value: 'system', child: Text('시스템 기본')),
+                        PopupMenuItem(value: 'light', child: Text('라이트')),
+                        PopupMenuItem(value: 'dark', child: Text('다크')),
+                      ],
+                ),
+              );
             },
           ),
+
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('앱 버전'),

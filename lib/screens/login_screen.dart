@@ -1,7 +1,6 @@
 // lib/screens/login_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // ✅ 추가: 숫자 입력 필터용
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../services/auth_service.dart';
@@ -70,6 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loginWithKakao() async {
     setState(() => _loading = true);
     try {
+      // 1. 카카오 로그인
       kakao.OAuthToken token;
       try {
         token = await kakao.UserApi.instance.loginWithKakaoTalk();
@@ -77,18 +77,21 @@ class _LoginScreenState extends State<LoginScreen> {
         token = await kakao.UserApi.instance.loginWithKakaoAccount();
       }
 
+      // 2. 사용자 정보 가져오기
       final kakao.User kakaoUser = await kakao.UserApi.instance.me();
       final nickname = kakaoUser.kakaoAccount?.profile?.nickname ?? '사용자';
       final profileImageUrl =
           kakaoUser.kakaoAccount?.profile?.profileImageUrl;
-      final email = kakaoUser.kakaoAccount?.email;
+      final email = kakaoUser.kakaoAccount?.email; // null 가능
 
+      // 3. Firebase custom token 교환 및 로그인
       await _authSvc.signInWithKakaoToken(
         token.accessToken,
         remember: _remember,
       );
       final fb.User? user = fb.FirebaseAuth.instance.currentUser;
 
+      // 4. Firestore에 정보 저장/병합
       if (user != null) {
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'name': nickname,
@@ -136,50 +139,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// ✅ 관리자 진입 전 코드 입력 다이얼로그
-  Future<void> _promptAdminCode() async {
-    final codeCtr = TextEditingController();
-    final entered = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('관리자 코드 8자리를 입력하세요'),
-        content: TextField(
-          controller: codeCtr,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: false),
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly], // 숫자만
-          maxLength: 8, // 안내에 맞춰 표시(검증은 아래에서 수행)
-          decoration: const InputDecoration(
-            counterText: '',
-            border: OutlineInputBorder(),
-          ),
-          onSubmitted: (_) => Navigator.pop(ctx, codeCtr.text.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, null),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, codeCtr.text.trim()),
-            child: const Text('확인'),
-          ),
-        ],
-      ),
-    );
-
-    if (!mounted || entered == null) return;
-
-    // 허용 코드: '8888888' (요청값). 안내 문구는 8자리지만, 입력 길이는 엄격히 제한하지 않습니다.
-    if (entered == '88888888' /* || entered == '88888888' */) {
-      Navigator.pushNamed(context, '/admin');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('관리자 코드가 올바르지 않습니다.')),
-      );
-    }
-  }
-
   @override
   void dispose() {
     _emailCtr.dispose();
@@ -197,7 +156,8 @@ class _LoginScreenState extends State<LoginScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          keyboardDismissBehavior:
+          ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -249,9 +209,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () => Navigator.pushNamed(context, '/signup'),
                 child: const Text('회원가입'),
               ),
-              // ✅ 관리자 전용 화면: 코드 입력 후 진입
               TextButton(
-                onPressed: _promptAdminCode,
+                onPressed: () => Navigator.pushNamed(context, '/admin'),
                 child: const Text(
                   '관리자 전용 화면',
                   style: TextStyle(color: Colors.redAccent),

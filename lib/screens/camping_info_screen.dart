@@ -90,12 +90,13 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || _contentId == null || _contentId!.isEmpty) return;
 
-    final snap = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('reservation_memos')
-        .doc(_contentId)
-        .get();
+    final snap =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('reservation_memos')
+            .doc(_contentId)
+            .get();
 
     if (snap.exists) {
       setState(() => _memoText = (snap.data()?['memo'] ?? '') as String);
@@ -165,27 +166,28 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     _memoCtr.text = _memoText;
     final result = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('메모 수정'),
-        content: TextField(
-          controller: _memoCtr,
-          maxLines: 5,
-          decoration: const InputDecoration(
-            hintText: '메모를 입력하세요',
-            border: OutlineInputBorder(),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('메모 수정'),
+            content: TextField(
+              controller: _memoCtr,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                hintText: '메모를 입력하세요',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, _memoCtr.text.trim()),
+                child: const Text('확인'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, _memoCtr.text.trim()),
-            child: const Text('확인'),
-          ),
-        ],
-      ),
     );
 
     if (result == null) return;
@@ -198,11 +200,11 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
           .collection('reservation_memos')
           .doc(_contentId)
           .set({
-        'campName': widget.campName,
-        'contentId': _contentId,
-        'memo': result,
-        'savedAt': DateTime.now(),
-      });
+            'campName': widget.campName,
+            'contentId': _contentId,
+            'memo': result,
+            'savedAt': DateTime.now(),
+          });
     }
     setState(() => _memoText = result);
     _showMsg('메모가 저장되었습니다.');
@@ -218,10 +220,11 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
 
     await showDialog(
       context: context,
-      builder: (ctx) => const AlertDialog(
-        title: Text('알림 설정 안내'),
-        content: Text('알림을 받고 싶은 날짜를 선택하세요.\n선택한 날짜에 빈자리가 생기면 알려드릴게요!'),
-      ),
+      builder:
+          (ctx) => const AlertDialog(
+            title: Text('알림 설정 안내'),
+            content: Text('알림을 받고 싶은 날짜를 선택하세요.\n선택한 날짜에 빈자리가 생기면 알려드릴게요!'),
+          ),
     );
 
     final selectedDate = await showDatePicker(
@@ -229,7 +232,19 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
       initialDate: DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 30)),
+      locale: const Locale('ko'), // ① 다이얼로그 자체 로케일 지정
+      helpText: '날짜 선택', // ② 텍스트도 한국어로
+      cancelText: '취소',
+      confirmText: '확인',
+      builder:
+          (context, child) => // ③ 이 컨텍스트만 한국어로 강제
+              Localizations.override(
+            context: context,
+            locale: const Locale('ko'),
+            child: child,
+          ),
     );
+
     if (selectedDate == null) return;
 
     await _repo.addAlarm(
@@ -277,10 +292,10 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
 
   // ───────────── Open-Meteo 하루치 날씨(홈과 동일 로직) ─────────────
   Future<Map<String, dynamic>?> fetchWeatherForDate(
-      double lat,
-      double lng,
-      DateTime date,
-      ) async {
+    double lat,
+    double lng,
+    DateTime date,
+  ) async {
     DateTime just(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
     final d = just(date);
     final today = just(DateTime.now());
@@ -295,11 +310,11 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
 
     final url = Uri.parse(
       'https://api.open-meteo.com/v1/forecast'
-          '?latitude=${lat.toStringAsFixed(4)}'
-          '&longitude=${lng.toStringAsFixed(4)}'
-          '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_mean'
-          '&forecast_days=14'
-          '&timezone=auto',
+      '?latitude=${lat.toStringAsFixed(4)}'
+      '&longitude=${lng.toStringAsFixed(4)}'
+      '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_mean'
+      '&forecast_days=14'
+      '&timezone=auto',
     );
 
     try {
@@ -310,10 +325,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
       final data = json.decode(decoded) as Map<String, dynamic>;
       final List times = (data['daily']?['time'] as List?) ?? [];
       final List codes = (data['daily']?['weathercode'] as List?) ?? [];
-      final List tmax =
-          (data['daily']?['temperature_2m_max'] as List?) ?? [];
-      final List tmin =
-          (data['daily']?['temperature_2m_min'] as List?) ?? [];
+      final List tmax = (data['daily']?['temperature_2m_max'] as List?) ?? [];
+      final List tmin = (data['daily']?['temperature_2m_min'] as List?) ?? [];
       final List prcpProb =
           (data['daily']?['precipitation_probability_mean'] as List?) ?? [];
 
@@ -327,9 +340,10 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
         'temp': _avgNum(tmax[idx], tmin[idx]),
         'max': (tmax[idx] as num?)?.toDouble(),
         'min': (tmin[idx] as num?)?.toDouble(),
-        'chanceOfRain': (prcpProb.isNotEmpty && prcpProb[idx] != null)
-            ? (prcpProb[idx] as num).round()
-            : null,
+        'chanceOfRain':
+            (prcpProb.isNotEmpty && prcpProb[idx] != null)
+                ? (prcpProb[idx] as num).round()
+                : null,
       };
 
       _weatherCache[cacheKey] = result;
@@ -388,8 +402,9 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         }
                         return PageView.builder(
                           itemCount: imgs.length,
-                          itemBuilder: (_, i) =>
-                              Image.network(imgs[i], fit: BoxFit.cover),
+                          itemBuilder:
+                              (_, i) =>
+                                  Image.network(imgs[i], fit: BoxFit.cover),
                         );
                       },
                     ),
@@ -461,7 +476,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                       /* 예약 가능 상태 */
                       Text(
                         '$dateLabel ${isAvail ? '예약 가능' : '예약 마감'} '
-                            '(${widget.available}/${widget.total})',
+                        '(${widget.available}/${widget.total})',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -485,7 +500,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                                   height: 16,
                                   width: 16,
                                   child: CircularProgressIndicator(
-                                      strokeWidth: 2),
+                                    strokeWidth: 2,
+                                  ),
                                 ),
                               ),
                             );
@@ -494,10 +510,12 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                           final icon = _wmoIcon(w['wmo'] as int?);
                           final temp = (w['temp'] as double?);
                           final pop = w['chanceOfRain'] as int?;
-                          final text = StringBuffer()
-                            ..write(temp != null
-                                ? '${temp.toStringAsFixed(1)}℃'
-                                : '-℃');
+                          final text =
+                              StringBuffer()..write(
+                                temp != null
+                                    ? '${temp.toStringAsFixed(1)}℃'
+                                    : '-℃',
+                              );
                           if (pop != null) {
                             text.write(' · 강수확률 $pop%');
                           }
@@ -516,23 +534,28 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                               ),
                               const SizedBox(width: 8),
                               ActionChip(
-                                avatar: const Icon(Icons.cloud_outlined,
-                                    size: 18, color: Colors.teal),
+                                avatar: const Icon(
+                                  Icons.cloud_outlined,
+                                  size: 18,
+                                  color: Colors.teal,
+                                ),
                                 label: const Text('날씨정보'),
-                                onPressed: (latitude == 0.0 && longitude == 0.0)
-                                    ? null
-                                    : () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          CampingWeatherAPI14DayScreen(
-                                            lat: latitude,
-                                            lng: longitude,
-                                          ),
-                                    ),
-                                  );
-                                },
+                                onPressed:
+                                    (latitude == 0.0 && longitude == 0.0)
+                                        ? null
+                                        : () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (_) =>
+                                                      CampingWeatherAPI14DayScreen(
+                                                        lat: latitude,
+                                                        lng: longitude,
+                                                      ),
+                                            ),
+                                          );
+                                        },
                               ),
                             ],
                           );
@@ -543,27 +566,30 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
 
                       /* ─── 예약/정보/알림 버튼 묶음 ─── */
                       ReservationActionButtons(
-                        onSchedule: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => CampingReservationScreen(
-                              camp: {'name': name},
+                        onSchedule:
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (_) => CampingReservationScreen(
+                                      camp: {'name': name},
+                                    ),
+                              ),
                             ),
-                          ),
-                        ),
-                        onInfo: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ReservationInfoScreen(),
-                            settings: RouteSettings(
-                              arguments: {
-                                'campName': name,
-                                'contentId': _contentId,
-                                'campType': c['type'],
-                              },
+                        onInfo:
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ReservationInfoScreen(),
+                                settings: RouteSettings(
+                                  arguments: {
+                                    'campName': name,
+                                    'contentId': _contentId,
+                                    'campType': c['type'],
+                                  },
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
                         onAlarm: _onTapAlarm,
                       ),
 
@@ -695,10 +721,9 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         _ReviewFilterBar(
                           sort: _reviewSort,
                           photoOnly: _photoOnly,
-                          onSortChanged: (v) =>
-                              setState(() => _reviewSort = v),
-                          onPhotoOnlyChanged: (v) =>
-                              setState(() => _photoOnly = v),
+                          onSortChanged: (v) => setState(() => _reviewSort = v),
+                          onPhotoOnlyChanged:
+                              (v) => setState(() => _photoOnly = v),
                         ),
                         const SizedBox(height: 12),
                         _FilteredReviewList(
@@ -736,11 +761,12 @@ class _LiveAverageRatingBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('campground_reviews')
-          .doc(contentId)
-          .collection('reviews')
-          .snapshots(),
+      stream:
+          FirebaseFirestore.instance
+              .collection('campground_reviews')
+              .doc(contentId)
+              .collection('reviews')
+              .snapshots(),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const SizedBox.shrink();
@@ -814,15 +840,9 @@ class _ReviewFilterBar extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         SegmentedButton<ReviewSort>(
-          style: const ButtonStyle(
-            visualDensity: VisualDensity.compact,
-          ),
+          style: const ButtonStyle(visualDensity: VisualDensity.compact),
           segments: const [
-            ButtonSegment(
-              value: ReviewSort.newest,
-
-              label: Text('최신순'),
-            ),
+            ButtonSegment(value: ReviewSort.newest, label: Text('최신순')),
             ButtonSegment(
               value: ReviewSort.ratingHigh,
               icon: Icon(Icons.star),
@@ -892,11 +912,12 @@ class _FilteredReviewList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('campground_reviews')
-          .doc(contentId)
-          .collection('reviews')
-          .snapshots(),
+      stream:
+          FirebaseFirestore.instance
+              .collection('campground_reviews')
+              .doc(contentId)
+              .collection('reviews')
+              .snapshots(),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -908,37 +929,36 @@ class _FilteredReviewList extends StatelessWidget {
         }
 
         // Map화
-        final items = docs.map((d) {
-          final m = d.data() as Map<String, dynamic>;
-          return {
-            ...m,
-            '_id': d.id,
-          };
-        }).toList();
+        final items =
+            docs.map((d) {
+              final m = d.data() as Map<String, dynamic>;
+              return {...m, '_id': d.id};
+            }).toList();
 
         final totalCount = items.length;
 
         // 사진 리뷰만 보기
-        final filtered = photoOnly
-            ? items.where((m) => _hasPhotos(m)).toList()
-            : items;
+        final filtered =
+            photoOnly ? items.where((m) => _hasPhotos(m)).toList() : items;
 
         // 정렬
         filtered.sort((a, b) {
           final ar = (a['rating'] as num?)?.toDouble() ?? 0.0;
           final br = (b['rating'] as num?)?.toDouble() ?? 0.0;
-          final ad = _toDate(a['date']) ?? DateTime.fromMillisecondsSinceEpoch(0);
-          final bd = _toDate(b['date']) ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final ad =
+              _toDate(a['date']) ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final bd =
+              _toDate(b['date']) ?? DateTime.fromMillisecondsSinceEpoch(0);
 
           switch (sort) {
             case ReviewSort.newest:
               return bd.compareTo(ad); // 최신순
             case ReviewSort.ratingHigh:
-            // 별점 높은 순, 동일 별점이면 최신순
+              // 별점 높은 순, 동일 별점이면 최신순
               final cmp = br.compareTo(ar);
               return cmp != 0 ? cmp : bd.compareTo(ad);
             case ReviewSort.ratingLow:
-            // 별점 낮은 순, 동일 별점이면 최신순
+              // 별점 낮은 순, 동일 별점이면 최신순
               final cmp = ar.compareTo(br);
               return cmp != 0 ? cmp : bd.compareTo(ad);
           }
@@ -972,9 +992,8 @@ class _FilteredReviewList extends StatelessWidget {
                 final reviewId = m['_id'] as String;
                 final nick = (m['nickname'] as String?) ?? '익명';
                 final date = _toDate(m['date']);
-                final dateStr = date != null
-                    ? DateFormat('yyyy-MM-dd').format(date)
-                    : '';
+                final dateStr =
+                    date != null ? DateFormat('yyyy-MM-dd').format(date) : '';
                 final rating = (m['rating'] as num?)?.toInt() ?? 5;
                 final content = (m['content'] as String?) ?? '';
                 final photos = _extractPhotos(m);
@@ -987,17 +1006,26 @@ class _FilteredReviewList extends StatelessWidget {
                 if (currentUser != null && reviewerId == currentUser.uid) {
                   actions = [
                     IconButton(
-                      icon: const Icon(Icons.edit, size: 18, color: Colors.teal),
-                      tooltip: '수정',
-                      onPressed: () => _showEditDialog(
-                        context,
-                        reviewId: reviewId,
-                        oldRating: rating,
-                        oldContent: content,
+                      icon: const Icon(
+                        Icons.edit,
+                        size: 18,
+                        color: Colors.teal,
                       ),
+                      tooltip: '수정',
+                      onPressed:
+                          () => _showEditDialog(
+                            context,
+                            reviewId: reviewId,
+                            oldRating: rating,
+                            oldContent: content,
+                          ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                      icon: const Icon(
+                        Icons.delete,
+                        size: 18,
+                        color: Colors.red,
+                      ),
                       tooltip: '삭제',
                       onPressed: () => _showDeleteDialog(context, reviewId),
                     ),
@@ -1005,13 +1033,18 @@ class _FilteredReviewList extends StatelessWidget {
                 } else if (currentUser != null) {
                   actions = [
                     IconButton(
-                      icon: const Icon(Icons.flag, size: 18, color: Colors.redAccent),
-                      tooltip: '신고',
-                      onPressed: () => _showReportDialog(
-                        context,
-                        reviewId: reviewId,
-                        reportedUserId: reviewerId,
+                      icon: const Icon(
+                        Icons.flag,
+                        size: 18,
+                        color: Colors.redAccent,
                       ),
+                      tooltip: '신고',
+                      onPressed:
+                          () => _showReportDialog(
+                            context,
+                            reviewId: reviewId,
+                            reportedUserId: reviewerId,
+                          ),
                     ),
                   ];
                 }
@@ -1031,7 +1064,10 @@ class _FilteredReviewList extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           dateStr,
-                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
                         ),
                         const Spacer(),
                         ...actions,
@@ -1041,7 +1077,7 @@ class _FilteredReviewList extends StatelessWidget {
                     Row(
                       children: List.generate(
                         5,
-                            (i) => Icon(
+                        (i) => Icon(
                           i < rating ? Icons.star : Icons.star_border,
                           color: Colors.green,
                           size: 16,
@@ -1058,12 +1094,13 @@ class _FilteredReviewList extends StatelessWidget {
                         crossAxisSpacing: 6,
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        children: photos.map((url) {
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(url, fit: BoxFit.cover),
-                          );
-                        }).toList(),
+                        children:
+                            photos.map((url) {
+                              return ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(url, fit: BoxFit.cover),
+                              );
+                            }).toList(),
                       ),
                     ],
                   ],
@@ -1079,43 +1116,54 @@ class _FilteredReviewList extends StatelessWidget {
   /* ───── 편집 / 삭제 / 신고 다이얼로그 및 동작 ───── */
 
   Future<void> _showEditDialog(
-      BuildContext context, {
-        required String reviewId,
-        required int oldRating,
-        required String oldContent,
-      }) async {
+    BuildContext context, {
+    required String reviewId,
+    required int oldRating,
+    required String oldContent,
+  }) async {
     final contentCtrl = TextEditingController(text: oldContent);
     int newRating = oldRating;
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('리뷰 수정'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownButton<int>(
-              value: newRating,
-              items: List.generate(
-                5,
-                    (i) => DropdownMenuItem(value: i + 1, child: Text('${i + 1}')),
-              ).toList(),
-              onChanged: (v) {
-                if (v != null) newRating = v;
-              },
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('리뷰 수정'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButton<int>(
+                  value: newRating,
+                  items:
+                      List.generate(
+                        5,
+                        (i) => DropdownMenuItem(
+                          value: i + 1,
+                          child: Text('${i + 1}'),
+                        ),
+                      ).toList(),
+                  onChanged: (v) {
+                    if (v != null) newRating = v;
+                  },
+                ),
+                TextField(
+                  controller: contentCtrl,
+                  maxLines: 3,
+                  decoration: const InputDecoration(labelText: '내용'),
+                ),
+              ],
             ),
-            TextField(
-              controller: contentCtrl,
-              maxLines: 3,
-              decoration: const InputDecoration(labelText: '내용'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('확인')),
-        ],
-      ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('확인'),
+              ),
+            ],
+          ),
     );
 
     if (confirmed == true) {
@@ -1125,24 +1173,31 @@ class _FilteredReviewList extends StatelessWidget {
           .collection('reviews')
           .doc(reviewId)
           .update({
-        'rating': newRating,
-        'content': contentCtrl.text.trim(),
-        'date': FieldValue.serverTimestamp(),
-      });
+            'rating': newRating,
+            'content': contentCtrl.text.trim(),
+            'date': FieldValue.serverTimestamp(),
+          });
     }
   }
 
   Future<void> _showDeleteDialog(BuildContext context, String reviewId) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('리뷰 삭제'),
-        content: const Text('이 리뷰를 삭제하시겠습니까?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('삭제')),
-        ],
-      ),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('리뷰 삭제'),
+            content: const Text('이 리뷰를 삭제하시겠습니까?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('삭제'),
+              ),
+            ],
+          ),
     );
 
     if (confirmed == true) {
@@ -1156,59 +1211,73 @@ class _FilteredReviewList extends StatelessWidget {
   }
 
   Future<void> _showReportDialog(
-      BuildContext context, {
-        required String reviewId,
-        required String reportedUserId,
-      }) async {
+    BuildContext context, {
+    required String reviewId,
+    required String reportedUserId,
+  }) async {
     final reporter = FirebaseAuth.instance.currentUser;
     if (reporter == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('로그인 후 이용해주세요.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('로그인 후 이용해주세요.')));
       return;
     }
 
     final reasonCtrl = TextEditingController();
     final reason = await showDialog<String?>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('신고 사유 입력'),
-        content: TextField(
-          controller: reasonCtrl,
-          maxLines: 3,
-          decoration: const InputDecoration(hintText: '신고 사유를 입력하세요'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, reasonCtrl.text.trim()),
-            child: const Text('확인'),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('신고 사유 입력'),
+            content: TextField(
+              controller: reasonCtrl,
+              maxLines: 3,
+              decoration: const InputDecoration(hintText: '신고 사유를 입력하세요'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, reasonCtrl.text.trim()),
+                child: const Text('확인'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
     if (reason == null || reason.isEmpty) return;
 
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('신고 확인'),
-        content: const Text('이 리뷰를 신고하시겠습니까?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('신고')),
-        ],
-      ),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('신고 확인'),
+            content: const Text('이 리뷰를 신고하시겠습니까?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('신고'),
+              ),
+            ],
+          ),
     );
     if (confirm != true) return;
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(reporter.uid)
-        .get();
+    final userDoc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(reporter.uid)
+            .get();
     final reporterNickname = userDoc.data()?['nickname'] as String? ?? '';
 
     final batch = FirebaseFirestore.instance.batch();
-    final reportRef = FirebaseFirestore.instance.collection('review_reports').doc();
+    final reportRef =
+        FirebaseFirestore.instance.collection('review_reports').doc();
     batch.set(reportRef, {
       'contentId': contentId,
       'reviewId': reviewId,
@@ -1229,8 +1298,9 @@ class _FilteredReviewList extends StatelessWidget {
 
     await batch.commit();
 
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('신고가 접수되었습니다.')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('신고가 접수되었습니다.')));
   }
 }
 

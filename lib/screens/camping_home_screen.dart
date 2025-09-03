@@ -97,10 +97,13 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   void initState() {
     super.initState();
     _loadHomeLocation();
-    FirebaseFirestore.instance.collection('campgrounds').snapshots().listen((snap) {
+    FirebaseFirestore.instance.collection('campgrounds').snapshots().listen((
+      snap,
+    ) {
       if (!mounted) return;
       setState(() {
-        _camps = snap.docs.map((d) => d.data()! as Map<String, dynamic>).toList();
+        _camps =
+            snap.docs.map((d) => d.data()! as Map<String, dynamic>).toList();
       });
     });
   }
@@ -111,7 +114,8 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     const r = 6371.0;
     final dLat = _deg2rad(lat2 - lat1);
     final dLon = _deg2rad(lon2 - lon1);
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(_deg2rad(lat1)) *
             math.cos(_deg2rad(lat2)) *
             math.sin(dLon / 2) *
@@ -130,10 +134,10 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
 
   // ======================= Open-Meteo (하루 데이터) ======================
   Future<Map<String, dynamic>?> fetchWeatherForDate(
-      double lat,
-      double lng,
-      DateTime date,
-      ) async {
+    double lat,
+    double lng,
+    DateTime date,
+  ) async {
     DateTime just(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
     final d = just(date);
     final today = just(DateTime.now());
@@ -143,16 +147,17 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     if (diffDays < 0 || diffDays > 13) return null;
 
     final dateStr = DateFormat('yyyy-MM-dd').format(d);
-    final cacheKey = '${lat.toStringAsFixed(4)},${lng.toStringAsFixed(4)}|$dateStr';
+    final cacheKey =
+        '${lat.toStringAsFixed(4)},${lng.toStringAsFixed(4)}|$dateStr';
     if (_weatherCache.containsKey(cacheKey)) return _weatherCache[cacheKey];
 
     final url = Uri.parse(
       'https://api.open-meteo.com/v1/forecast'
-          '?latitude=${lat.toStringAsFixed(4)}'
-          '&longitude=${lng.toStringAsFixed(4)}'
-          '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_mean'
-          '&forecast_days=14'
-          '&timezone=auto',
+      '?latitude=${lat.toStringAsFixed(4)}'
+      '&longitude=${lng.toStringAsFixed(4)}'
+      '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_mean'
+      '&forecast_days=14'
+      '&timezone=auto',
     );
 
     try {
@@ -178,9 +183,10 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
         'temp': _avgNum(tmax[idx], tmin[idx]),
         'max': (tmax[idx] as num?)?.toDouble(),
         'min': (tmin[idx] as num?)?.toDouble(),
-        'chanceOfRain': (prcpProb.isNotEmpty && prcpProb[idx] != null)
-            ? (prcpProb[idx] as num).round()
-            : null,
+        'chanceOfRain':
+            (prcpProb.isNotEmpty && prcpProb[idx] != null)
+                ? (prcpProb[idx] as num).round()
+                : null,
       };
 
       _weatherCache[cacheKey] = result;
@@ -193,8 +199,8 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
 
   // ======================= 평균 별점 로더 (캐시 활용) ====================
   Future<Map<String, double?>> _loadAvgRatingsFor(
-      List<Map<String, dynamic>> camps,
-      ) async {
+    List<Map<String, dynamic>> camps,
+  ) async {
     final Map<String, double?> result = {};
     for (final c in camps) {
       final contentId = c['contentId']?.toString() ?? '';
@@ -207,11 +213,12 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
         continue;
       }
       // 리뷰 서브컬렉션 전체를 읽어 평균 계산 (캐시 저장)
-      final snap = await FirebaseFirestore.instance
-          .collection('campground_reviews')
-          .doc(contentId)
-          .collection('reviews')
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('campground_reviews')
+              .doc(contentId)
+              .collection('reviews')
+              .get();
 
       if (snap.docs.isEmpty) {
         _avgRatingCache[contentId] = null;
@@ -253,8 +260,10 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
               ),
               child: Row(
                 children: [
-                  const Text('검색 필터',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    '검색 필터',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.refresh, color: Colors.teal),
@@ -302,73 +311,96 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                   children: [
                     _buildSection(
                       title: '지역',
-                      options: _camps
-                          .map((c) => (c['location'] as String).split(' ').first)
-                          .toSet()
-                          .toList()
-                        ..sort(),
+                      options:
+                          _camps
+                              .map(
+                                (c) =>
+                                    (c['location'] as String).split(' ').first,
+                              )
+                              .toSet()
+                              .toList()
+                            ..sort(),
                       selected: _filterRegion,
-                      onToggle: (opt) => setState(() {
-                        _filterRegion.contains(opt)
-                            ? _filterRegion.remove(opt)
-                            : _filterRegion.add(opt);
-                      }),
+                      onToggle:
+                          (opt) => setState(() {
+                            _filterRegion.contains(opt)
+                                ? _filterRegion.remove(opt)
+                                : _filterRegion.add(opt);
+                          }),
                     ),
                     _buildSection(
                       title: '캠핑장 유형',
-                      options: _camps.map((c) => c['type'] as String).toSet().toList()
-                        ..sort(),
+                      options:
+                          _camps
+                              .map((c) => c['type'] as String)
+                              .toSet()
+                              .toList()
+                            ..sort(),
                       selected: _filterType,
-                      onToggle: (opt) => setState(() {
-                        _filterType.contains(opt)
-                            ? _filterType.remove(opt)
-                            : _filterType.add(opt);
-                      }),
+                      onToggle:
+                          (opt) => setState(() {
+                            _filterType.contains(opt)
+                                ? _filterType.remove(opt)
+                                : _filterType.add(opt);
+                          }),
                     ),
                     _buildSection(
                       title: '야영장 구분',
-                      options: _camps
-                          .map((c) => (c['inDuty'] as String? ?? '').split(','))
-                          .expand((e) => e)
-                          .where((s) => s.isNotEmpty)
-                          .toSet()
-                          .toList()
-                        ..sort(),
+                      options:
+                          _camps
+                              .map(
+                                (c) =>
+                                    (c['inDuty'] as String? ?? '').split(','),
+                              )
+                              .expand((e) => e)
+                              .where((s) => s.isNotEmpty)
+                              .toSet()
+                              .toList()
+                            ..sort(),
                       selected: _filterDuty,
-                      onToggle: (opt) => setState(() {
-                        _filterDuty.contains(opt)
-                            ? _filterDuty.remove(opt)
-                            : _filterDuty.add(opt);
-                      }),
+                      onToggle:
+                          (opt) => setState(() {
+                            _filterDuty.contains(opt)
+                                ? _filterDuty.remove(opt)
+                                : _filterDuty.add(opt);
+                          }),
                     ),
                     _buildSection(
                       title: '환경',
-                      options: _camps
-                          .map((c) => c['lctCl'] as String? ?? '')
-                          .where((e) => e.isNotEmpty)
-                          .toSet()
-                          .toList()
-                        ..sort(),
+                      options:
+                          _camps
+                              .map((c) => c['lctCl'] as String? ?? '')
+                              .where((e) => e.isNotEmpty)
+                              .toSet()
+                              .toList()
+                            ..sort(),
                       selected: _filterEnv,
-                      onToggle: (opt) => setState(() {
-                        _filterEnv.contains(opt)
-                            ? _filterEnv.remove(opt)
-                            : _filterEnv.add(opt);
-                      }),
+                      onToggle:
+                          (opt) => setState(() {
+                            _filterEnv.contains(opt)
+                                ? _filterEnv.remove(opt)
+                                : _filterEnv.add(opt);
+                          }),
                     ),
                     _buildSection(
                       title: '편의시설',
-                      options: _camps
-                          .expand((c) => (c['amenities'] as List<dynamic>? ?? []).cast<String>())
-                          .toSet()
-                          .toList()
-                        ..sort(),
+                      options:
+                          _camps
+                              .expand(
+                                (c) =>
+                                    (c['amenities'] as List<dynamic>? ?? [])
+                                        .cast<String>(),
+                              )
+                              .toSet()
+                              .toList()
+                            ..sort(),
                       selected: _filterAmenity,
-                      onToggle: (opt) => setState(() {
-                        _filterAmenity.contains(opt)
-                            ? _filterAmenity.remove(opt)
-                            : _filterAmenity.add(opt);
-                      }),
+                      onToggle:
+                          (opt) => setState(() {
+                            _filterAmenity.contains(opt)
+                                ? _filterAmenity.remove(opt)
+                                : _filterAmenity.add(opt);
+                          }),
                     ),
                   ],
                 ),
@@ -394,15 +426,18 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: options
-              .map((opt) => ChoiceChip(
-            label: Text(opt),
-            selected: selected.contains(opt),
-            onSelected: (_) => onToggle(opt),
-            selectedColor: Colors.teal.shade100,
-            backgroundColor: Colors.grey.shade200,
-          ))
-              .toList(),
+          children:
+              options
+                  .map(
+                    (opt) => ChoiceChip(
+                      label: Text(opt),
+                      selected: selected.contains(opt),
+                      onSelected: (_) => onToggle(opt),
+                      selectedColor: Colors.teal.shade100,
+                      backgroundColor: Colors.grey.shade200,
+                    ),
+                  )
+                  .toList(),
         ),
         const SizedBox(height: 16),
       ],
@@ -441,9 +476,9 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => PrototypeScreen(
-                    onLocationChange: updateUserLocation,
-                  ),
+                  builder:
+                      (_) =>
+                          PrototypeScreen(onLocationChange: updateUserLocation),
                 ),
               );
             },
@@ -497,7 +532,11 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                       color: Colors.teal,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.calendar_today, color: Colors.white, size: 24),
+                    child: const Icon(
+                      Icons.calendar_today,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
                 ),
               ],
@@ -507,19 +546,24 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
           // 실시간 데이터(캠핑장 + 예약현황)
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('campgrounds').snapshots(),
+              stream:
+                  FirebaseFirestore.instance
+                      .collection('campgrounds')
+                      .snapshots(),
               builder: (ctx, campSnap) {
                 if (!campSnap.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final camps = campSnap.data!.docs
-                    .map((d) => d.data()! as Map<String, dynamic>)
-                    .toList();
+                final camps =
+                    campSnap.data!.docs
+                        .map((d) => d.data()! as Map<String, dynamic>)
+                        .toList();
 
                 return StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('realtime_availability')
-                      .snapshots(),
+                  stream:
+                      FirebaseFirestore.instance
+                          .collection('realtime_availability')
+                          .snapshots(),
                   builder: (ctx2, availSnap) {
                     if (!availSnap.hasData) {
                       return const Center(child: CircularProgressIndicator());
@@ -528,50 +572,63 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                     // id: 캠핑장 이름으로 문서가 있다고 가정
                     final availabilityMap = <String, Map<String, dynamic>>{};
                     for (var doc in availSnap.data!.docs) {
-                      availabilityMap[doc.id] = doc.data()! as Map<String, dynamic>;
+                      availabilityMap[doc.id] =
+                          doc.data()! as Map<String, dynamic>;
                     }
 
                     // 필터링
-                    final filtered = camps.where((c) {
-                      final name = (c['name'] as String).toLowerCase();
-                      if (_appliedKeyword != null &&
-                          _appliedKeyword!.isNotEmpty &&
-                          !name.contains(_appliedKeyword!.toLowerCase())) {
-                        return false;
-                      }
-                      final region = (c['location'] as String).split(' ').first;
-                      if (_appliedRegion.isNotEmpty && !_appliedRegion.contains(region)) {
-                        return false;
-                      }
-                      if (_appliedType.isNotEmpty &&
-                          !_appliedType.contains(c['type'] as String)) {
-                        return false;
-                      }
-                      final duties = (c['inDuty'] as String? ?? '').split(',');
-                      if (_appliedDuty.isNotEmpty &&
-                          !_appliedDuty.any((d) => duties.contains(d))) {
-                        return false;
-                      }
-                      final env = c['lctCl'] as String? ?? '';
-                      if (_appliedEnv.isNotEmpty && !_appliedEnv.contains(env)) {
-                        return false;
-                      }
-                      final amens = (c['amenities'] as List<dynamic>? ?? []).cast<String>();
-                      if (_appliedAmenity.isNotEmpty &&
-                          !_appliedAmenity.every(amens.contains)) {
-                        return false;
-                      }
-                      if (_onlyAvailable) {
-                        final avail = (availabilityMap[c['name']]?[dateKey]?['available'] ??
-                            c['available']) as int? ??
-                            0;
-                        if (avail <= 0) return false;
-                      }
-                      return true;
-                    }).toList();
+                    final filtered =
+                        camps.where((c) {
+                          final name = (c['name'] as String).toLowerCase();
+                          if (_appliedKeyword != null &&
+                              _appliedKeyword!.isNotEmpty &&
+                              !name.contains(_appliedKeyword!.toLowerCase())) {
+                            return false;
+                          }
+                          final region =
+                              (c['location'] as String).split(' ').first;
+                          if (_appliedRegion.isNotEmpty &&
+                              !_appliedRegion.contains(region)) {
+                            return false;
+                          }
+                          if (_appliedType.isNotEmpty &&
+                              !_appliedType.contains(c['type'] as String)) {
+                            return false;
+                          }
+                          final duties = (c['inDuty'] as String? ?? '').split(
+                            ',',
+                          );
+                          if (_appliedDuty.isNotEmpty &&
+                              !_appliedDuty.any((d) => duties.contains(d))) {
+                            return false;
+                          }
+                          final env = c['lctCl'] as String? ?? '';
+                          if (_appliedEnv.isNotEmpty &&
+                              !_appliedEnv.contains(env)) {
+                            return false;
+                          }
+                          final amens =
+                              (c['amenities'] as List<dynamic>? ?? [])
+                                  .cast<String>();
+                          if (_appliedAmenity.isNotEmpty &&
+                              !_appliedAmenity.every(amens.contains)) {
+                            return false;
+                          }
+                          if (_onlyAvailable) {
+                            final avail =
+                                (availabilityMap[c['name']]?[dateKey]?['available'] ??
+                                        c['available'])
+                                    as int? ??
+                                0;
+                            if (avail <= 0) return false;
+                          }
+                          return true;
+                        }).toList();
 
                     // 1) 기본 정렬: 거리
-                    filtered.sort((a, b) => _campDistance(a).compareTo(_campDistance(b)));
+                    filtered.sort(
+                      (a, b) => _campDistance(a).compareTo(_campDistance(b)),
+                    );
 
                     // 2) 정렬 전 리스트에 "기본 순서 인덱스" 부여 (정렬 안정성 확보)
                     final baseItems = List.generate(filtered.length, (i) {
@@ -585,7 +642,10 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                       children: [
                         // 개수 + 현위치 + "예약가능만" 토글 + 정렬
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -596,20 +656,27 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                   if (_currentPlaceName.isNotEmpty)
                                     Text(
                                       '현위치 : $_currentPlaceName',
-                                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
                                     ),
                                 ],
                               ),
                               const SizedBox(height: 4),
                               CheckboxListTile(
                                 contentPadding: EdgeInsets.zero,
-                                title: const Text('예약 가능한 캠핑장만 출력',
-                                    style: TextStyle(fontSize: 14)),
+                                title: const Text(
+                                  '예약 가능한 캠핑장만 출력',
+                                  style: TextStyle(fontSize: 14),
+                                ),
                                 value: _onlyAvailable,
                                 onChanged: (val) {
-                                  if (val != null) setState(() => _onlyAvailable = val);
+                                  if (val != null)
+                                    setState(() => _onlyAvailable = val);
                                 },
-                                controlAffinity: ListTileControlAffinity.trailing,
+                                controlAffinity:
+                                    ListTileControlAffinity.trailing,
                               ),
                               const SizedBox(height: 8),
                               SegmentedButton<RatingSort>(
@@ -637,7 +704,8 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                   });
                                 },
                                 style: SegmentedButton.styleFrom(
-                                  selectedBackgroundColor: Colors.teal.withOpacity(0.12),
+                                  selectedBackgroundColor: Colors.teal
+                                      .withOpacity(0.12),
                                   selectedForegroundColor: Colors.teal.shade800,
                                   backgroundColor: Colors.grey.shade100,
                                   side: BorderSide(color: Colors.grey.shade300),
@@ -652,61 +720,91 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
 
                         // 결과 리스트 (별점 정렬 필요 시 평균값 로딩 후 정렬)
                         Expanded(
-                          child: (_ratingSort == RatingSort.none)
-                          // 정렬 없음: 바로 렌더
-                              ? _buildListView(baseItems, availabilityMap, dateKey)
-                          // 정렬 있음: 평균 별점 로딩 후 정렬해서 렌더
-                              : FutureBuilder<Map<String, double?>>(
-                            future: _loadAvgRatingsFor(
-                              baseItems
-                                  .map((e) => e['camp'] as Map<String, dynamic>)
-                                  .toList(),
-                            ),
-                            builder: (context, ratingSnap) {
-                              if (!ratingSnap.hasData) {
-                                return const Center(child: CircularProgressIndicator());
-                              }
-                              final ratingMap = ratingSnap.data!;
-                              final sorted = List<Map<String, dynamic>>.from(baseItems);
+                          child:
+                              (_ratingSort == RatingSort.none)
+                                  // 정렬 없음: 바로 렌더
+                                  ? _buildListView(
+                                    baseItems,
+                                    availabilityMap,
+                                    dateKey,
+                                  )
+                                  // 정렬 있음: 평균 별점 로딩 후 정렬해서 렌더
+                                  : FutureBuilder<Map<String, double?>>(
+                                    future: _loadAvgRatingsFor(
+                                      baseItems
+                                          .map(
+                                            (e) =>
+                                                e['camp']
+                                                    as Map<String, dynamic>,
+                                          )
+                                          .toList(),
+                                    ),
+                                    builder: (context, ratingSnap) {
+                                      if (!ratingSnap.hasData) {
+                                        return const Center(
+                                          child: CircularProgressIndicator(),
+                                        );
+                                      }
+                                      final ratingMap = ratingSnap.data!;
+                                      final sorted =
+                                          List<Map<String, dynamic>>.from(
+                                            baseItems,
+                                          );
 
-                              // 정렬 규칙:
-                              //  - 별점 존재 캠핑장이 앞 (높은순/낮은순)
-                              //  - 별점 없는 캠핑장은 항상 맨 뒤
-                              //  - 동률/없음일 때는 baseIdx(거리 정렬 결과)를 보조 키로 사용
-                              int cmp(Map<String, dynamic> a, Map<String, dynamic> b) {
-                                final ca = a['camp'] as Map<String, dynamic>;
-                                final cb = b['camp'] as Map<String, dynamic>;
-                                final ida = ca['contentId']?.toString() ?? '';
-                                final idb = cb['contentId']?.toString() ?? '';
-                                final ra = ratingMap[ida];
-                                final rb = ratingMap[idb];
+                                      // 정렬 규칙:
+                                      //  - 별점 존재 캠핑장이 앞 (높은순/낮은순)
+                                      //  - 별점 없는 캠핑장은 항상 맨 뒤
+                                      //  - 동률/없음일 때는 baseIdx(거리 정렬 결과)를 보조 키로 사용
+                                      int cmp(
+                                        Map<String, dynamic> a,
+                                        Map<String, dynamic> b,
+                                      ) {
+                                        final ca =
+                                            a['camp'] as Map<String, dynamic>;
+                                        final cb =
+                                            b['camp'] as Map<String, dynamic>;
+                                        final ida =
+                                            ca['contentId']?.toString() ?? '';
+                                        final idb =
+                                            cb['contentId']?.toString() ?? '';
+                                        final ra = ratingMap[ida];
+                                        final rb = ratingMap[idb];
 
-                                final hasA = ra != null;
-                                final hasB = rb != null;
+                                        final hasA = ra != null;
+                                        final hasB = rb != null;
 
-                                if (hasA && hasB) {
-                                  final diff = (ra! - rb!).toDouble();
-                                  if (_ratingSort == RatingSort.highFirst) {
-                                    if (diff.abs() > 1e-9) return -diff.sign.toInt();
-                                  } else {
-                                    if (diff.abs() > 1e-9) return diff.sign.toInt();
-                                  }
-                                  // 별점이 동일하면 baseIdx로
-                                  return (a['baseIdx'] as int).compareTo(b['baseIdx'] as int);
-                                } else if (hasA && !hasB) {
-                                  return -1; // A 먼저
-                                } else if (!hasA && hasB) {
-                                  return 1; // B 먼저
-                                } else {
-                                  // 둘 다 없음 -> baseIdx
-                                  return (a['baseIdx'] as int).compareTo(b['baseIdx'] as int);
-                                }
-                              }
+                                        if (hasA && hasB) {
+                                          final diff = (ra! - rb!).toDouble();
+                                          if (_ratingSort ==
+                                              RatingSort.highFirst) {
+                                            if (diff.abs() > 1e-9)
+                                              return -diff.sign.toInt();
+                                          } else {
+                                            if (diff.abs() > 1e-9)
+                                              return diff.sign.toInt();
+                                          }
+                                          // 별점이 동일하면 baseIdx로
+                                          return (a['baseIdx'] as int)
+                                              .compareTo(b['baseIdx'] as int);
+                                        } else if (hasA && !hasB) {
+                                          return -1; // A 먼저
+                                        } else if (!hasA && hasB) {
+                                          return 1; // B 먼저
+                                        } else {
+                                          // 둘 다 없음 -> baseIdx
+                                          return (a['baseIdx'] as int)
+                                              .compareTo(b['baseIdx'] as int);
+                                        }
+                                      }
 
-                              sorted.sort(cmp);
-                              return _buildListView(sorted, availabilityMap, dateKey);
-                            },
-                          ),
+                                      sorted.sort(cmp);
+                                      return _buildListView(
+                                        sorted,
+                                        availabilityMap,
+                                        dateKey,
+                                      );
+                                    },
+                                  ),
                         ),
                       ],
                     );
@@ -722,10 +820,10 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
 
   // 리스트 빌더 (공통)
   Widget _buildListView(
-      List<Map<String, dynamic>> items,
-      Map<String, Map<String, dynamic>> availabilityMap,
-      String dateKey,
-      ) {
+    List<Map<String, dynamic>> items,
+    Map<String, Map<String, dynamic>> availabilityMap,
+    String dateKey,
+  ) {
     if (items.isEmpty) {
       return const Center(
         child: Text(
@@ -740,15 +838,19 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
       itemCount: items.length,
       itemBuilder: (ctx4, i) {
         final c = items[i]['camp'] as Map<String, dynamic>;
-        final aMap = availabilityMap[c['name']]?[dateKey] as Map<String, dynamic>?;
-        final avail = aMap?['available'] as int? ?? (c['available'] as int? ?? 0);
+        final aMap =
+            availabilityMap[c['name']]?[dateKey] as Map<String, dynamic>?;
+        final avail =
+            aMap?['available'] as int? ?? (c['available'] as int? ?? 0);
         final total = aMap?['total'] as int? ?? (c['total'] as int? ?? 0);
         final isAvail = avail > 0;
 
         final lat = double.tryParse(c['mapY']?.toString() ?? '') ?? 0.0;
         final lng = double.tryParse(c['mapX']?.toString() ?? '') ?? 0.0;
         final distance =
-        _campDistance(c).isFinite ? _campDistance(c).toStringAsFixed(1) : '-';
+            _campDistance(c).isFinite
+                ? _campDistance(c).toStringAsFixed(1)
+                : '-';
 
         final contentId = c['contentId']?.toString() ?? '';
 
@@ -758,29 +860,36 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
             final weather = snapshot.data;
 
             // 날씨 텍스트 미리 조합
-            final String weatherText = (weather == null)
-                ? ''
-                : '${(weather['temp'] as double?)?.toStringAsFixed(1) ?? '-'}℃'
-                '${weather['chanceOfRain'] != null ? ' · 강수확률 ${weather['chanceOfRain']}%' : ''}';
+            final String weatherText =
+                (weather == null)
+                    ? ''
+                    : '${(weather['temp'] as double?)?.toStringAsFixed(1) ?? '-'}℃'
+                        '${weather['chanceOfRain'] != null ? ' · 강수확률 ${weather['chanceOfRain']}%' : ''}';
 
             return Opacity(
               opacity: isAvail ? 1 : 0.4,
               child: InkWell(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CampingInfoScreen(
-                      campName: c['name'],
-                      available: avail,
-                      total: total,
-                      isBookmarked: widget.bookmarked[c['name']] == true,
-                      onToggleBookmark: widget.onToggleBookmark,
-                      selectedDate: widget.selectedDate,
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (_) => CampingInfoScreen(
+                              campName: c['name'],
+                              available: avail,
+                              total: total,
+                              isBookmarked:
+                                  widget.bookmarked[c['name']] == true,
+                              onToggleBookmark: widget.onToggleBookmark,
+                              selectedDate: widget.selectedDate,
+                            ),
+                      ),
                     ),
-                  ),
-                ),
                 child: Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -830,8 +939,10 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 '${c['location']} | ${c['type']}',
-                                style:
-                                const TextStyle(fontSize: 12, color: Colors.grey),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
                               ),
                               const SizedBox(height: 4),
 
@@ -841,7 +952,9 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                 child: Text(
                                   '거리: $distance km',
                                   style: const TextStyle(
-                                      fontSize: 12, color: Colors.grey),
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ),
 
@@ -850,14 +963,15 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                 const SizedBox(height: 2),
                                 Row(
                                   children: [
-                                    Icon(_wmoIcon(weather['wmo'] as int?),
-                                        size: 18),
+                                    Icon(
+                                      _wmoIcon(weather['wmo'] as int?),
+                                      size: 18,
+                                    ),
                                     const SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
                                         weatherText,
-                                        style:
-                                        const TextStyle(fontSize: 12),
+                                        style: const TextStyle(fontSize: 12),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
@@ -871,8 +985,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                     ? '예약 가능 ($avail/$total)'
                                     : '예약 마감 ($avail/$total)',
                                 style: TextStyle(
-                                  color:
-                                  isAvail ? Colors.green : Colors.red,
+                                  color: isAvail ? Colors.green : Colors.red,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -884,9 +997,10 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                             (widget.bookmarked[c['name']] ?? false)
                                 ? Icons.bookmark
                                 : Icons.bookmark_border,
-                            color: (widget.bookmarked[c['name']] ?? false)
-                                ? Colors.red
-                                : Colors.grey,
+                            color:
+                                (widget.bookmarked[c['name']] ?? false)
+                                    ? Colors.red
+                                    : Colors.grey,
                           ),
                           onPressed: () => widget.onToggleBookmark(c['name']),
                         ),
@@ -908,19 +1022,17 @@ class _LiveAverageRatingBadge extends StatelessWidget {
   final String contentId;
   final bool dense; // 홈 리스트에서 더 컴팩트하게 보이도록
 
-  const _LiveAverageRatingBadge({
-    required this.contentId,
-    this.dense = false,
-  });
+  const _LiveAverageRatingBadge({required this.contentId, this.dense = false});
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('campground_reviews')
-          .doc(contentId)
-          .collection('reviews')
-          .snapshots(),
+      stream:
+          FirebaseFirestore.instance
+              .collection('campground_reviews')
+              .doc(contentId)
+              .collection('reviews')
+              .snapshots(),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const SizedBox.shrink();
