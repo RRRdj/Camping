@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import 'edit_profile_screen.dart';
 import 'setting_screen.dart';
 import 'my_review_screen.dart';
+import '../widgets/app_loading.dart';
 
 class MyInfoScreen extends StatelessWidget {
   MyInfoScreen({Key? key}) : super(key: key);
@@ -17,19 +18,27 @@ class MyInfoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: Text('로그인이 필요합니다.')),
-      );
+      return const Scaffold(body: Center(child: Text('로그인이 필요합니다.')));
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('내 정보'), centerTitle: true),
-      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream:
-        FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+      appBar: AppBar(
+        title: const Text(
+          '내 정보',
+          style: TextStyle(
+            fontWeight: FontWeight.bold, // 볼드체 적용
+            fontSize: 20, // 필요 시 크기 조정
+          ),
+        ),
+        centerTitle: true,
+      ),
+
+      body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        future:
+            FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const AppLoading(); //
           }
           if (snapshot.hasError) {
             return Center(child: Text('오류 발생: ${snapshot.error}'));
@@ -42,9 +51,10 @@ class MyInfoScreen extends StatelessWidget {
 
           final provider = data['provider'] as String?;
           final emailFromFirestore = (data['email'] as String?) ?? '';
-          final displayEmail = emailFromFirestore.isNotEmpty
-              ? emailFromFirestore
-              : (user.email ?? '');
+          final displayEmail =
+              emailFromFirestore.isNotEmpty
+                  ? emailFromFirestore
+                  : (user.email ?? '');
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -56,9 +66,10 @@ class MyInfoScreen extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 50,
-                        backgroundImage: (data['photoUrl'] ?? '').toString().isNotEmpty
-                            ? NetworkImage(data['photoUrl'])
-                            : null,
+                        backgroundImage:
+                            (data['photoUrl'] ?? '').toString().isNotEmpty
+                                ? NetworkImage(data['photoUrl'])
+                                : null,
                         backgroundColor: Colors.grey[200],
                       ),
                       const SizedBox(height: 12),
@@ -105,19 +116,25 @@ class MyInfoScreen extends StatelessWidget {
                   context,
                   icon: Icons.person,
                   title: '개인정보 수정',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-                  ),
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const EditProfileScreen(),
+                        ),
+                      ),
                 ),
                 _item(
                   context,
                   icon: Icons.star,
                   title: '후기 관리',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const MyReviewsScreen()),
-                  ),
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MyReviewsScreen(),
+                        ),
+                      ),
                 ),
                 _item(
                   context,
@@ -129,10 +146,13 @@ class MyInfoScreen extends StatelessWidget {
                   context,
                   icon: Icons.settings,
                   title: '환경설정',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                  ),
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsScreen(),
+                        ),
+                      ),
                 ),
                 const SizedBox(height: 16),
                 /*──────── 회원 탈퇴 ─────────*/
@@ -143,32 +163,35 @@ class MyInfoScreen extends StatelessWidget {
                   onTap: () async {
                     final ok = await showDialog<bool>(
                       context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('회원 탈퇴'),
-                        content: const Text(
-                          '정말 탈퇴하시겠습니까? 탈퇴 시 복구할 수 없습니다.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('취소'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text(
-                              '탈퇴',
-                              style: TextStyle(color: Colors.red),
+                      builder:
+                          (ctx) => AlertDialog(
+                            title: const Text('회원 탈퇴'),
+                            content: const Text(
+                              '정말 탈퇴하시겠습니까? 탈퇴 시 복구할 수 없습니다.',
                             ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('취소'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text(
+                                  '탈퇴',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
                     );
                     if (ok != true) return;
 
                     showDialog(
                       context: context,
                       barrierDismissible: false,
-                      builder: (_) => const Center(child: CircularProgressIndicator()),
+                      builder:
+                          (_) =>
+                              const Center(child: CircularProgressIndicator()),
                     );
 
                     try {
@@ -177,7 +200,7 @@ class MyInfoScreen extends StatelessWidget {
                       Navigator.pushNamedAndRemoveUntil(
                         context,
                         '/login',
-                            (_) => false,
+                        (_) => false,
                       );
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('회원 탈퇴가 완료되었습니다.')),
@@ -213,16 +236,15 @@ class MyInfoScreen extends StatelessWidget {
 
   /* 공통 ListTile 위젯 */
   Widget _item(
-      BuildContext ctx, {
-        required IconData icon,
-        required String title,
-        required VoidCallback onTap,
-        Color iconColor = Colors.teal,
-      }) =>
-      ListTile(
-        leading: Icon(icon, color: iconColor),
-        title: Text(title, style: const TextStyle(fontSize: 16)),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-        onTap: onTap,
-      );
+    BuildContext ctx, {
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color iconColor = Colors.teal,
+  }) => ListTile(
+    leading: Icon(icon, color: iconColor),
+    title: Text(title, style: const TextStyle(fontSize: 16)),
+    trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+    onTap: onTap,
+  );
 }

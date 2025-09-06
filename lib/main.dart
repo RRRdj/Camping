@@ -71,6 +71,7 @@ class MyApp extends StatelessWidget {
             colorScheme: lightScheme,
             brightness: Brightness.light,
             useMaterial3: true,
+            fontFamily: 'Pretendard',
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
               fillColor: lightScheme.surfaceVariant,
@@ -102,11 +103,12 @@ class MyApp extends StatelessWidget {
             ),
           ),
 
-          // -------- Dark Theme (검색창/칩/카드 대비 강화) --------
+          // -------- Dark Theme --------
           darkTheme: ThemeData(
             colorScheme: darkScheme,
             brightness: Brightness.dark,
             useMaterial3: true,
+            fontFamily: 'Pretendard',
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
               fillColor: darkScheme.surfaceContainerHighest,
@@ -133,7 +135,6 @@ class MyApp extends StatelessWidget {
               ),
               side: BorderSide(color: darkScheme.outlineVariant),
             ),
-
             cardTheme: CardTheme(
               color: darkScheme.surfaceContainerHigh,
               surfaceTintColor: Colors.transparent,
@@ -205,7 +206,6 @@ class _AuthGateState extends State<AuthGate> {
           _shownBlockDialog = false;
           return const LoginScreen();
         }
-        // 사용자 문서에서 blocked 확인
         return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
           future:
               FirebaseFirestore.instance
@@ -244,7 +244,6 @@ class _AuthGateState extends State<AuthGate> {
                   );
                 });
               }
-              // 다이얼로그 띄우는 동안 빈 화면 유지
               return const Scaffold(body: SizedBox());
             }
             _shownBlockDialog = false;

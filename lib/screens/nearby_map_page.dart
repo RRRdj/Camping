@@ -1,3 +1,4 @@
+// lib/screens/nearby_map_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:geolocator/geolocator.dart';
@@ -36,6 +37,11 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
   List<Camp> _camps = [], _filtered = [];
   // 입력 중 추천 리스트
   List<Camp> _suggestions = [];
+
+  // ▼▼▼ 상세보기 토글 상태 (요청 1번)
+  String? _openCampId;
+  bool _detailOpen = false;
+  // ▲▲▲
 
   @override
   void initState() {
@@ -113,14 +119,35 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
     });
   }
 
+  /// (요청 2번) 클러스터 숫자 Bold CSS 주입
+  String _injectClusterBoldCss(String html) {
+    const css = '''
+<style>
+  /* Leaflet MarkerCluster 기본 구조 대응 */
+  .marker-cluster div, .marker-cluster span { 
+    font-weight: 700 !important; 
+  }
+  /* 혹시 커스텀 클래스가 있다면 함께 대응 */
+  .cluster-text { font-weight: 700 !important; }
+</style>
+''';
+    if (html.contains('</head>')) {
+      return html.replaceFirst('</head>', '$css</head>');
+    }
+    return '$css$html';
+  }
+
   void _reload() {
     if (_lat == null || _lng == null) return;
-    final html = _html.interactiveMapHtml(
+    String html = _html.interactiveMapHtml(
       lat: _lat!,
       lng: _lng!,
       camps: _filtered,
       date: widget.selectedDate,
     );
+    // ▼ 숫자 Bold 스타일 삽입
+    html = _injectClusterBoldCss(html);
+    // ▲
     _web.loadData(data: html, mimeType: 'text/html', encoding: 'utf-8');
   }
 
@@ -130,7 +157,16 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('내 주변 캠핑장')),
+      appBar: AppBar(
+        title: const Text(
+          '내 주변 캠핑장',
+          style: TextStyle(
+            fontWeight: FontWeight.bold, // 또는 FontWeight.w700
+            fontSize: 20, // 필요하다면 크기도 조정
+          ),
+        ),
+      ),
+
       body: Column(
         children: [
           Padding(
@@ -209,26 +245,54 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                     _reload();
                     c.addJavaScriptHandler(
                       handlerName: 'detail',
-                      callback: (args) {
+                      callback: (args) async {
                         final cid = args.first as String?;
                         if (cid == null) return;
+
+                        // camp 찾기
                         final camp = _camps.firstWhere(
                           (e) => e.contentId == cid,
+                          orElse: () => _camps.first,
                         );
-                        Navigator.push(
+
+                        // ▼▼ 상세보기 토글 로직 (요청 1번)
+                        if (_detailOpen && _openCampId == cid) {
+                          // 같은 캠프 아이콘을 다시 누르면 닫기
+                          if (mounted) Navigator.of(context).pop();
+                          _detailOpen = false;
+                          _openCampId = null;
+                          return;
+                        }
+                        // 다른 캠프가 열려있으면 우선 닫고 새로 열기
+                        if (_detailOpen && mounted) {
+                          Navigator.of(context).pop();
+                          _detailOpen = false;
+                          _openCampId = null;
+                        }
+
+                        _openCampId = cid;
+                        _detailOpen = true;
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder:
                                 (_) => CampingInfoScreen(
-                                  campName: cid,
+                                  // campName은 실제 이름으로 전달하는 게 자연스럽습니다.
+                                  campName: camp.name,
                                   available: camp.available,
                                   total: camp.total,
-                                  isBookmarked: widget.bookmarked[cid] ?? false,
+                                  isBookmarked:
+                                      widget.bookmarked[camp.name] ?? false,
                                   onToggleBookmark: widget.onToggleBookmark,
                                   selectedDate: widget.selectedDate,
                                 ),
                           ),
                         );
+                        // 상세 화면에서 돌아오면 상태 정리
+                        if (!mounted) return;
+                        _detailOpen = false;
+                        _openCampId = null;
+                        // ▲▲
                       },
                     );
                   },

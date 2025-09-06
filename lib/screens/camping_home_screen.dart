@@ -202,45 +202,60 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     List<Map<String, dynamic>> camps,
   ) async {
     final Map<String, double?> result = {};
-    for (final c in camps) {
-      final contentId = c['contentId']?.toString() ?? '';
-      if (contentId.isEmpty) {
-        result[contentId] = null;
-        continue;
-      }
-      if (_avgRatingCache.containsKey(contentId)) {
-        result[contentId] = _avgRatingCache[contentId];
-        continue;
-      }
-      // 리뷰 서브컬렉션 전체를 읽어 평균 계산 (캐시 저장)
-      final snap =
-          await FirebaseFirestore.instance
-              .collection('campground_reviews')
-              .doc(contentId)
-              .collection('reviews')
-              .get();
+    final ids = <String>[];
 
-      if (snap.docs.isEmpty) {
-        _avgRatingCache[contentId] = null;
-        result[contentId] = null;
+    // 1) 캐시 먼저 반영하고, 캐시 없는 contentId만 수집
+    for (final c in camps) {
+      final id = c['contentId']?.toString() ?? '';
+      if (id.isEmpty) {
+        result[id] = null;
         continue;
       }
-      double sum = 0;
-      int cnt = 0;
-      for (final d in snap.docs) {
-        final m = d.data();
-        final r = m['rating'];
-        if (r is num) {
-          sum += r.toDouble();
-          cnt++;
-        }
+      if (_avgRatingCache.containsKey(id)) {
+        result[id] = _avgRatingCache[id];
+      } else {
+        ids.add(id);
       }
-      final avg = cnt == 0 ? null : (sum / cnt);
-      _avgRatingCache[contentId] = avg;
-      result[contentId] = avg;
     }
+    if (ids.isEmpty) return result;
+
+    // 2) 병렬 청크 처리 (너무 많은 동시요청 방지)
+    const chunkSize = 10; // 상황에 맞게 8~12 권장
+    for (var i = 0; i < ids.length; i += chunkSize) {
+      final chunk = ids.sublist(i, math.min(i + chunkSize, ids.length));
+      await Future.wait(
+        chunk.map((id) async {
+          final snap =
+              await FirebaseFirestore.instance
+                  .collection('campground_reviews')
+                  .doc(id)
+                  .collection('reviews')
+                  .get();
+
+          if (snap.docs.isEmpty) {
+            _avgRatingCache[id] = null;
+            result[id] = null;
+            return;
+          }
+          double sum = 0;
+          var cnt = 0;
+          for (final d in snap.docs) {
+            final r = d.data()['rating'];
+            if (r is num) {
+              sum += r.toDouble();
+              cnt++;
+            }
+          }
+          final avg = cnt == 0 ? null : (sum / cnt);
+          _avgRatingCache[id] = avg;
+          result[id] = avg;
+        }),
+      );
+    }
+
     return result;
   }
+
   // =====================================================================
 
   // ======================= 필터 Drawer ==================================
@@ -265,33 +280,84 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.refresh, color: Colors.teal),
-                    tooltip: '초기화',
-                    onPressed: () {
-                      setState(() {
-                        _filterKeyword = null;
-                        _filterRegion.clear();
-                        _filterType.clear();
-                        _filterDuty.clear();
-                        _filterEnv.clear();
-                        _filterAmenity.clear();
-                      });
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.check, color: Colors.teal),
-                    tooltip: '적용',
-                    onPressed: () {
-                      setState(() {
-                        _appliedKeyword = _filterKeyword;
-                        _appliedRegion = List.from(_filterRegion);
-                        _appliedType = List.from(_filterType);
-                        _appliedDuty = List.from(_filterDuty);
-                        _appliedEnv = List.from(_filterEnv);
-                        _appliedAmenity = List.from(_filterAmenity);
-                      });
-                      Navigator.pop(context);
+
+                  // 공통 색 정의: 아이콘과 동일 계열(Colors.teal = #009688)
+                  // 필요시 정확히 고정하고 싶으면 const kIconTeal = Color(0xFF009688);
+                  // 로 선언해서 써도 됩니다.
+                  Builder(
+                    builder: (context) {
+                      final Color kIconTeal = Colors.teal; // 아이콘과 같은 색
+                      final Color resetBg = kIconTeal.withOpacity(
+                        0.18,
+                      ); // 연한 청록 (초기화)
+                      final Color applyBg = kIconTeal.withOpacity(
+                        0.32,
+                      ); // 조금 진한 청록 (적용)
+                      final BorderRadius br = BorderRadius.circular(12);
+
+                      return Row(
+                        children: [
+                          // 초기화
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              backgroundColor: resetBg,
+                              foregroundColor: Colors.black87, // 글자색
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: br,
+                                side: BorderSide(
+                                  color: kIconTeal.withOpacity(0.35),
+                                ),
+                              ),
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _filterKeyword = null;
+                                _filterRegion.clear();
+                                _filterType.clear();
+                                _filterDuty.clear();
+                                _filterEnv.clear();
+                                _filterAmenity.clear();
+                              });
+                            },
+                            child: const Text('초기화'),
+                          ),
+                          const SizedBox(width: 8),
+
+                          // 적용
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              backgroundColor: applyBg,
+                              foregroundColor: Colors.black87,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: br,
+                                side: BorderSide(
+                                  color: kIconTeal.withOpacity(0.35),
+                                ),
+                              ),
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _appliedKeyword = _filterKeyword;
+                                _appliedRegion = List.from(_filterRegion);
+                                _appliedType = List.from(_filterType);
+                                _appliedDuty = List.from(_filterDuty);
+                                _appliedEnv = List.from(_filterEnv);
+                                _appliedAmenity = List.from(_filterAmenity);
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: const Text('적용'),
+                          ),
+                        ],
+                      );
                     },
                   ),
                 ],
@@ -460,17 +526,29 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   Widget build(BuildContext context) {
     final dateLabel = DateFormat('MM월 dd일').format(widget.selectedDate);
     final dateKey = DateFormat('yyyy-MM-dd').format(widget.selectedDate);
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       key: _scaffoldKey,
       endDrawer: _buildFilterDrawer(context),
       appBar: AppBar(
-        title: Text('[ $dateLabel 캠핑장 현황 ]'),
+        title: Text(
+          '[ $dateLabel 캠핑장 현황 ]',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700, // 또는 FontWeight.bold
+          ),
+        ),
         centerTitle: true,
+
+        backgroundColor: cs.surfaceContainerHigh,
+        foregroundColor: cs.onSurface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+
         actions: [
           // (선택) 위치 프로토타입 화면 버튼
           IconButton(
-            icon: const Icon(Icons.developer_mode),
+            icon: const Icon(Icons.my_location_outlined),
             tooltip: '프로토타입 테스트',
             onPressed: () {
               Navigator.push(
@@ -732,6 +810,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                   : FutureBuilder<Map<String, double?>>(
                                     future: _loadAvgRatingsFor(
                                       baseItems
+                                          .take(10) // 보이는 개수로 제한
                                           .map(
                                             (e) =>
                                                 e['camp']
@@ -739,6 +818,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                           )
                                           .toList(),
                                     ),
+
                                     builder: (context, ratingSnap) {
                                       if (!ratingSnap.hasData) {
                                         return const Center(

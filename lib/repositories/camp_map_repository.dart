@@ -26,9 +26,9 @@ class Camp {
   final int total;
 
   // ↓ 추가: 선택 날짜의 요약 날씨
-  final double? avgTemp;      // 평균기온( (max+min)/2 )
-  final int? chanceOfRain;    // 강수확률(평균, %)
-  final int? wmoCode;         // WMO weather code
+  final double? avgTemp; // 평균기온( (max+min)/2 )
+  final int? chanceOfRain; // 강수확률(평균, %)
+  final int? wmoCode; // WMO weather code
 
   Camp({
     required this.contentId,
@@ -101,7 +101,7 @@ class Camp {
       final t = avgTemp != null ? '${avgTemp!.toStringAsFixed(1)}℃' : '-℃';
       final pop = (chanceOfRain != null) ? ' · 강수확률 ${chanceOfRain!}%' : '';
       weatherLine =
-      '<div style="font-size:12px; color:#333; margin-bottom:8px;">'
+          '<div style="font-size:12px; color:#333; margin-bottom:8px;">'
           ' $emoji $wt · $t$pop'
           '</div>';
     }
@@ -168,26 +168,36 @@ class Camp {
   // ── WMO → 한글 텍스트/이모지 매퍼 (홈 화면과 동일한 의미)
   static String _wmoKoText(int? code) {
     switch (code) {
-      case 0: return '맑음';
+      case 0:
+        return '맑음';
       case 1:
-      case 2: return '부분적 흐림';
-      case 3: return '흐림';
+      case 2:
+        return '부분적 흐림';
+      case 3:
+        return '흐림';
       case 45:
-      case 48: return '안개';
+      case 48:
+        return '안개';
       case 51:
       case 53:
-      case 55: return '이슬비';
+      case 55:
+        return '이슬비';
       case 61:
       case 63:
-      case 65: return '비';
+      case 65:
+        return '비';
       case 71:
       case 73:
-      case 75: return '눈';
+      case 75:
+        return '눈';
       case 80:
       case 81:
-      case 82: return '소나기';
-      case 95: return '천둥번개';
-      default: return '날씨';
+      case 82:
+        return '소나기';
+      case 95:
+        return '천둥번개';
+      default:
+        return '날씨';
     }
   }
 
@@ -229,46 +239,49 @@ class CampMapRepository {
     // 1) 기본 캠프 + (국립/지자체만 남김)
     final campSnap = await _fire.collection('campgrounds').get();
     var camps =
-    campSnap.docs.map((d) => Camp.fromDoc(d)).toList()..retainWhere((c) {
-      final t = c.type.toLowerCase();
-      return t.contains('국립') || t.contains('지자체');
-    });
+        campSnap.docs.map((d) => Camp.fromDoc(d)).toList()..retainWhere((c) {
+          final t = c.type.toLowerCase();
+          return t.contains('국립') || t.contains('지자체');
+        });
 
     // 2) 실시간 예약 현황 반영
     final rtSnap = await _fire.collection('realtime_availability').get();
     final rtMap = {for (var d in rtSnap.docs) d.id: d.data()};
     final key = DateFormat('yyyy-MM-dd').format(selectedDate);
 
-    final merged = camps.map((c) {
-      final day = rtMap[c.name]?[key] as Map<String, dynamic>?;
-      return day == null
-          ? c
-          : c.copyWith(
-        available: (day['available'] as int?) ?? c.available,
-        total: (day['total'] as int?) ?? c.total,
-      );
-    }).toList();
+    final merged =
+        camps.map((c) {
+          final day = rtMap[c.name]?[key] as Map<String, dynamic>?;
+          return day == null
+              ? c
+              : c.copyWith(
+                available: (day['available'] as int?) ?? c.available,
+                total: (day['total'] as int?) ?? c.total,
+              );
+        }).toList();
 
     // 3) 선택 날짜의 날씨(14일 이내만) 주입
-    final enriched = await Future.wait(merged.map((c) async {
-      final w = await _fetchWeatherForDate(c.lat, c.lng, selectedDate);
-      if (w == null) return c;
-      return c.copyWith(
-        wmoCode: w['wmo'] as int?,
-        avgTemp: (w['temp'] as num?)?.toDouble(),
-        chanceOfRain: w['chanceOfRain'] as int?,
-      );
-    }));
+    final enriched = await Future.wait(
+      merged.map((c) async {
+        final w = await _fetchWeatherForDate(c.lat, c.lng, selectedDate);
+        if (w == null) return c;
+        return c.copyWith(
+          wmoCode: w['wmo'] as int?,
+          avgTemp: (w['temp'] as num?)?.toDouble(),
+          chanceOfRain: w['chanceOfRain'] as int?,
+        );
+      }),
+    );
 
     return enriched;
   }
 
   /// Open-Meteo 하루 데이터(홈 화면과 동일 컨셉)
   Future<Map<String, dynamic>?> _fetchWeatherForDate(
-      double lat,
-      double lng,
-      DateTime date,
-      ) async {
+    double lat,
+    double lng,
+    DateTime date,
+  ) async {
     DateTime just(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
     final d = just(date);
     final today = just(DateTime.now());
@@ -283,11 +296,11 @@ class CampMapRepository {
 
     final url = Uri.parse(
       'https://api.open-meteo.com/v1/forecast'
-          '?latitude=${lat.toStringAsFixed(4)}'
-          '&longitude=${lng.toStringAsFixed(4)}'
-          '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_mean'
-          '&forecast_days=14'
-          '&timezone=auto',
+      '?latitude=${lat.toStringAsFixed(4)}'
+      '&longitude=${lng.toStringAsFixed(4)}'
+      '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_mean'
+      '&forecast_days=14'
+      '&timezone=auto',
     );
 
     try {
@@ -308,15 +321,12 @@ class CampMapRepository {
 
       final code = (codes[idx] as num?)?.toInt();
       final tempAvg = _avgNum(tmax[idx], tmin[idx]);
-      final pop = (prcpProb.isNotEmpty && prcpProb[idx] != null)
-          ? (prcpProb[idx] as num).round()
-          : null;
+      final pop =
+          (prcpProb.isNotEmpty && prcpProb[idx] != null)
+              ? (prcpProb[idx] as num).round()
+              : null;
 
-      final result = {
-        'wmo': code,
-        'temp': tempAvg,
-        'chanceOfRain': pop,
-      };
+      final result = {'wmo': code, 'temp': tempAvg, 'chanceOfRain': pop};
       _weatherCache[key] = result;
       return result;
     } catch (_) {

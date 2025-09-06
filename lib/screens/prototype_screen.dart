@@ -240,7 +240,7 @@ class _PrototypeScreenState extends State<PrototypeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('장소 검색 프로토타입')),
+      appBar: AppBar(title: const Text('장소 검색')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

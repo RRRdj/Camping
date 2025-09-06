@@ -7,8 +7,7 @@ import '../repositories/camp_map_repository.dart';
 class CampMapHtmlService {
   /* ─── 날짜·예약 유틸 ─── */
 
-  String formatDateKey(DateTime date) =>
-      DateFormat('yyyy-MM-dd').format(date);
+  String formatDateKey(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
 
   String reservationUrl(String type, String? resveUrl) =>
       type == '국립'
