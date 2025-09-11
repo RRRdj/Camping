@@ -1,4 +1,3 @@
-// lib/screens/camping_home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -7,10 +6,9 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'camping_info_screen.dart';
-import 'prototype_screen.dart'; // 위치 테스트용(선택)
+import 'prototype_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// 별점 정렬 옵션
 enum RatingSort { none, highFirst, lowFirst }
 
 class CampingHomeScreen extends StatefulWidget {
@@ -34,7 +32,6 @@ class CampingHomeScreen extends StatefulWidget {
 class _CampingHomeScreenState extends State<CampingHomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // ---- 내 위치 (기본값 + 저장 위치 로드) ---------------------------------
   double _userLat = 36.1190;
   double _userLng = 128.3446;
   String _currentPlaceName = '구미시';
@@ -62,9 +59,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
       });
     }
   }
-  // ---------------------------------------------------------------------
 
-  // ---- 필터 상태 --------------------------------------------------------
   String? _appliedKeyword;
   List<String> _appliedRegion = [];
   List<String> _appliedType = [];
@@ -79,19 +74,13 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   List<String> _filterEnv = [];
   List<String> _filterAmenity = [];
 
-  // 별점 정렬 상태
   RatingSort _ratingSort = RatingSort.none;
-
-  // ---------------------------------------------------------------------
 
   List<Map<String, dynamic>> _camps = [];
 
-  // ---- 날씨 캐시 (좌표+날짜별) ------------------------------------------
   static final Map<String, Map<String, dynamic>?> _weatherCache = {};
 
-  // ---- 평균 별점 캐시 (contentId -> avg) -------------------------------
   final Map<String, double?> _avgRatingCache = {};
-  // ---------------------------------------------------------------------
 
   @override
   void initState() {
@@ -898,7 +887,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     );
   }
 
-  // 리스트 빌더 (공통)
   Widget _buildListView(
     List<Map<String, dynamic>> items,
     Map<String, Map<String, dynamic>> availabilityMap,

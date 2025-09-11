@@ -1,18 +1,16 @@
-// lib/screens/bookmark_screen.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
-import 'package:shimmer/shimmer.dart'; // 스켈레톤 유지
+import 'package:shimmer/shimmer.dart';
 
 import '../campground_data.dart';
 import 'camping_info_screen.dart';
 import '../repositories/real_time_availability_repository.dart';
 import '../repositories/campground_repository.dart';
-import '../services/camp_map_html_service.dart';
+import '../services/camp_map_html_service.dart' show CampMapHtmlService;
 
-/* ───────────── 날씨 헬퍼 & 캐시 ───────────── */
 double? _avgNum(dynamic a, dynamic b) {
   if (a == null || b == null) return null;
   return ((a as num).toDouble() + (b as num).toDouble()) / 2.0;
@@ -56,15 +54,23 @@ String _wmoKoText(int? code) {
 IconData _wmoIcon(int? code) {
   if (code == null) return Icons.wb_cloudy;
   if (code == 0) return Icons.wb_sunny;
-  if ([1, 2].contains(code)) return Icons.cloud_queue;
+  if (code == 1 || code == 2) return Icons.cloud_queue;
   if (code == 3) return Icons.cloud;
-  if ([61, 63, 65, 80, 81, 82].contains(code)) return Icons.water_drop;
-  if ([71, 73, 75].contains(code)) return Icons.ac_unit;
-  if ([95].contains(code)) return Icons.thunderstorm;
+  if (code == 71 || code == 73 || code == 75) return Icons.ac_unit;
+  if (code == 95) return Icons.thunderstorm;
+  if (code == 61 ||
+      code == 63 ||
+      code == 65 ||
+      code == 80 ||
+      code == 81 ||
+      code == 82) {
+    return Icons.water_drop;
+  }
   return Icons.wb_cloudy;
 }
 
 final Map<String, Map<String, dynamic>?> _weatherCache = {};
+final Map<String, Future<Map<String, dynamic>?>> _weatherFutureCache = {};
 
 Future<Map<String, dynamic>?> _fetchWeatherForDate(
   double lat,
@@ -76,60 +82,68 @@ Future<Map<String, dynamic>?> _fetchWeatherForDate(
   final today = just(DateTime.now());
   final diffDays = d.difference(today).inDays;
 
-  // 과거 또는 14일 범위 밖이면 숨김
   if (diffDays < 0 || diffDays > 13) return null;
 
   final dateStr = DateFormat('yyyy-MM-dd').format(d);
   final cacheKey =
       '${lat.toStringAsFixed(4)},${lng.toStringAsFixed(4)}|$dateStr';
+
   if (_weatherCache.containsKey(cacheKey)) return _weatherCache[cacheKey];
 
-  final url = Uri.parse(
-    'https://api.open-meteo.com/v1/forecast'
-    '?latitude=${lat.toStringAsFixed(4)}'
-    '&longitude=${lng.toStringAsFixed(4)}'
-    '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_mean'
-    '&forecast_days=14'
-    '&timezone=auto',
-  );
+  final future = _weatherFutureCache.putIfAbsent(cacheKey, () async {
+    final url = Uri.parse(
+      'https://api.open-meteo.com/v1/forecast'
+      '?latitude=${lat.toStringAsFixed(4)}'
+      '&longitude=${lng.toStringAsFixed(4)}'
+      '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_mean'
+      '&forecast_days=14'
+      '&timezone=auto',
+    );
 
-  try {
-    final resp = await http.get(url).timeout(const Duration(seconds: 8));
-    if (resp.statusCode != 200) return null;
+    try {
+      final resp = await http.get(url).timeout(const Duration(seconds: 6));
+      if (resp.statusCode != 200) return null;
 
-    final decoded = utf8.decode(resp.bodyBytes);
-    final data = json.decode(decoded) as Map<String, dynamic>;
-    final List times = (data['daily']?['time'] as List?) ?? [];
-    final List codes = (data['daily']?['weathercode'] as List?) ?? [];
-    final List tmax = (data['daily']?['temperature_2m_max'] as List?) ?? [];
-    final List tmin = (data['daily']?['temperature_2m_min'] as List?) ?? [];
-    final List prcpProb =
-        (data['daily']?['precipitation_probability_mean'] as List?) ?? [];
+      final decoded = utf8.decode(resp.bodyBytes);
+      final data = json.decode(decoded) as Map<String, dynamic>;
+      final List times = (data['daily']?['time'] as List?) ?? const [];
+      final List codes = (data['daily']?['weathercode'] as List?) ?? const [];
+      final List tmax =
+          (data['daily']?['temperature_2m_max'] as List?) ?? const [];
+      final List tmin =
+          (data['daily']?['temperature_2m_min'] as List?) ?? const [];
+      final List prcpProb =
+          (data['daily']?['precipitation_probability_mean'] as List?) ??
+          const [];
 
-    final idx = times.indexOf(dateStr);
-    if (idx < 0) return null;
+      final idx = times.indexOf(dateStr);
+      if (idx < 0) return null;
 
-    final code = (codes[idx] as num?)?.toInt();
-    final result = {
-      'wmo': code,
-      'text': _wmoKoText(code),
-      'temp': _avgNum(tmax[idx], tmin[idx]),
-      'max': (tmax[idx] as num?)?.toDouble(),
-      'min': (tmin[idx] as num?)?.toDouble(),
-      'chanceOfRain':
-          (prcpProb.isNotEmpty && prcpProb[idx] != null)
-              ? (prcpProb[idx] as num).round()
-              : null,
-    };
+      final code = (codes[idx] as num?)?.toInt();
+      final result = {
+        'wmo': code,
+        'text': _wmoKoText(code),
+        'temp': _avgNum(tmax[idx], tmin[idx]),
+        'max': (tmax[idx] as num?)?.toDouble(),
+        'min': (tmin[idx] as num?)?.toDouble(),
+        'chanceOfRain':
+            (prcpProb.isNotEmpty && prcpProb[idx] != null)
+                ? (prcpProb[idx] as num).round()
+                : null,
+      };
 
-    _weatherCache[cacheKey] = result;
-    return result;
-  } catch (_) {
-    return null;
-  }
+      _weatherCache[cacheKey] = result;
+      return result;
+    } catch (_) {
+      return null;
+    }
+  });
+
+  final res = await future;
+  _weatherFutureCache.remove(cacheKey); // 메모리 누수 방지(완료 후 해제)
+  return res;
 }
 
-/* ───────────── 평균 별점 배지(실시간) ───────────── */
 class _LiveAverageRatingBadge extends StatelessWidget {
   final String contentId;
   const _LiveAverageRatingBadge({required this.contentId});
@@ -189,7 +203,6 @@ class _LiveAverageRatingBadge extends StatelessWidget {
   }
 }
 
-/* ───────────── 화면 본문 ───────────── */
 class BookmarkScreen extends StatefulWidget {
   final Map<String, bool> bookmarked;
   final void Function(String name) onToggleBookmark;
@@ -211,13 +224,25 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
   final _campRepo = CampgroundRepository();
   final _util = CampMapHtmlService();
 
-  // ✅ 캠핑장 목록을 한 번만 로드해서 재사용
   late final Future<List<Map<String, dynamic>>> _campsOnce;
+
+  final Map<String, Future<Availability>> _availFutureCache = {};
 
   @override
   void initState() {
     super.initState();
     _campsOnce = _campRepo.watchCamps().first;
+  }
+
+  Future<Availability> _fetchAvailOnce({
+    required String name,
+    required String dateKey,
+  }) {
+    final key = '$name|$dateKey';
+    return _availFutureCache.putIfAbsent(
+      key,
+      () => _availRepo.fetchAvailability(campName: name, dateKey: dateKey),
+    );
   }
 
   void _openDetail(
@@ -256,12 +281,10 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
 
     final dateKey = _util.formatDateKey(widget.selectedDate);
 
-    // ⬇️ 여기서 한 번만 로드하고, 아이템에서는 메모리 조회
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _campsOnce,
       builder: (context, campsSnap) {
         if (campsSnap.connectionState == ConnectionState.waiting) {
-          // 간단 로딩 (원하면 AppLoading 등으로 교체 가능)
           return const Center(child: CircularProgressIndicator());
         }
         if (!campsSnap.hasData) {
@@ -269,7 +292,6 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
         }
 
         final all = campsSnap.data!;
-        // 이름 → 캠핑장 맵 빠른 접근용 인덱스
         final Map<String, Map<String, dynamic>> byName = {
           for (final m in all) (m['name'] as String): m,
         };
@@ -281,19 +303,14 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
             final name = camp['name'] as String;
 
             return FutureBuilder<Availability>(
-              future: _availRepo.fetchAvailability(
-                campName: name,
-                dateKey: dateKey,
-              ),
+              future: _fetchAvailOnce(name: name, dateKey: dateKey),
               builder: (context, snap1) {
                 final availData = snap1.data;
                 final available = availData?.available ?? 0;
                 final total = availData?.total ?? 0;
                 final isAvail = available > 0;
 
-                // ✅ 더 이상 여기서 watchCamps().first 안 부름!
-                final matching = byName[name] ?? <String, dynamic>{};
-
+                final matching = byName[name] ?? const <String, dynamic>{};
                 final location = matching['location'] as String? ?? '-';
                 final type = matching['type'] as String? ?? '-';
                 final img = (matching['firstImageUrl'] as String?) ?? '';
@@ -308,109 +325,17 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                   future: _fetchWeatherForDate(lat, lng, widget.selectedDate),
                   builder: (context, wsnap) {
                     final weather = wsnap.data;
-
-                    // 스켈레톤은 가벼운 느낌으로 유지(선택). 필요 없으면 제거 가능.
-                    final isWaitingCard =
+                    final waiting =
                         snap1.connectionState == ConnectionState.waiting;
 
-                    if (isWaitingCard) {
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        surfaceTintColor: Colors.transparent,
-                        color: Theme.of(context).cardColor,
-                        elevation: 1,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Shimmer.fromColors(
-                            baseColor: Colors.grey.shade300,
-                            highlightColor: Colors.grey.shade100,
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 60,
-                                  height: 60,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            height: 16,
-                                            width: 120,
-                                            color: Colors.white,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            height: 14,
-                                            width: 36,
-                                            color: Colors.white,
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Container(
-                                        height: 12,
-                                        width: 140,
-                                        color: Colors.white,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        children: [
-                                          Container(
-                                            width: 18,
-                                            height: 18,
-                                            color: Colors.white,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Container(
-                                              height: 12,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Container(
-                                        height: 12,
-                                        width: 90,
-                                        color: Colors.white,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  width: 24,
-                                  height: 24,
-                                  color: Colors.white,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
+                    if (waiting) {
+                      return _BookmarkSkeletonCard();
                     }
 
                     final isBookmarked = widget.bookmarked[name] == true;
 
                     return Opacity(
-                      opacity: isAvail ? 1 : 0.4,
+                      opacity: isAvail ? 1 : 0.45,
                       child: InkWell(
                         borderRadius: BorderRadius.circular(12),
                         onTap: () {
@@ -430,12 +355,12 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
+                          elevation: 1,
                           child: Padding(
                             padding: const EdgeInsets.all(12),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // 이미지/아이콘
                                 if (hasImage)
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
@@ -444,23 +369,22 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                                       width: 60,
                                       height: 60,
                                       fit: BoxFit.cover,
+                                      cacheWidth: 120,
+                                      cacheHeight: 120,
+                                      errorBuilder:
+                                          (_, __, ___) =>
+                                              const _ImageFallback(),
                                     ),
                                   )
                                 else
-                                  const Icon(
-                                    Icons.park,
-                                    size: 48,
-                                    color: Colors.teal,
-                                  ),
+                                  const _ImageFallback(),
                                 const SizedBox(width: 16),
 
-                                // 본문
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      // 제목 + 별점
                                       Wrap(
                                         spacing: 8,
                                         runSpacing: 4,
@@ -501,7 +425,7 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      // 날씨 요약
+
                                       if (weather != null)
                                         Row(
                                           children: [
@@ -525,7 +449,7 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                                           ],
                                         ),
                                       const SizedBox(height: 6),
-                                      // 예약 가능 상태
+
                                       Text(
                                         isAvail
                                             ? '예약 가능 ($available/$total)'
@@ -543,7 +467,6 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                                   ),
                                 ),
 
-                                // 북마크 해제 버튼
                                 IconButton(
                                   icon: const Icon(
                                     Icons.bookmark,
@@ -571,7 +494,68 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
   }
 }
 
-/* ───────────── 평균 별점 숫자(Text) ───────────── */
+class _BookmarkSkeletonCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Shimmer.fromColors(
+          baseColor: Colors.grey.shade300,
+          highlightColor: Colors.grey.shade100,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(height: 16, width: 120, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Container(height: 14, width: 36, color: Colors.white),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(height: 12, width: 140, color: Colors.white),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Container(width: 18, height: 18, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Container(height: 12, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(height: 12, width: 90, color: Colors.white),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(width: 24, height: 24, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AverageRatingText extends StatelessWidget {
   final String contentId;
   const _AverageRatingText({required this.contentId});
@@ -609,5 +593,14 @@ class _AverageRatingText extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+class _ImageFallback extends StatelessWidget {
+  const _ImageFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Icon(Icons.park, size: 48, color: Colors.teal);
   }
 }

@@ -26,11 +26,10 @@ class AdminDashboardScreen extends StatelessWidget {
           ),
           _buildMenuCard(
             context,
-            title: '사용자 관리', // ← 추가된 부분
+            title: '사용자 관리',
             icon: Icons.people,
             onTap: () => Navigator.pushNamed(context, '/admin/users'),
           ),
-          // 필요 시 다른 메뉴도 계속 추가 가능
         ],
       ),
     );

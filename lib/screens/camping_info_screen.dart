@@ -19,8 +19,9 @@ import '../services/go_camping_service.dart';
 import '../widgets/amenity_section.dart';
 import '../widgets/info_row.dart';
 import '../widgets/review_form.dart';
+import '../widgets/weather_summary_chip.dart';
 
-// ★ 새로 만든/사용하는 위젯들
+import '../widgets/weather_presenter.dart';
 import '../widgets/memo_box.dart';
 import '../widgets/reservation_action_buttons.dart';
 import '../widgets/detail_info_section.dart';
@@ -29,7 +30,7 @@ import '../widgets/site_button.dart';
 
 import 'camping_reservation_screen.dart';
 import 'reservation_info_screen.dart';
-import 'camping_weatherapi_14day_screen.dart'; // 날씨 상세 화면
+import 'camping_weather_forecast_screen.dart';
 
 /* ───────────────── 정렬 타입 ───────────────── */
 enum ReviewSort { newest, ratingHigh, ratingLow }
@@ -336,7 +337,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
       final code = (codes[idx] as num?)?.toInt();
       final result = {
         'wmo': code,
-        'text': _wmoKoText(code),
+        'text': wmoKoText(code),
         'temp': _avgNum(tmax[idx], tmin[idx]),
         'max': (tmax[idx] as num?)?.toDouble(),
         'min': (tmin[idx] as num?)?.toDouble(),
@@ -485,7 +486,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                       ),
                       const SizedBox(height: 8),
 
-                      /* ─── 날씨 요약 ─── */
                       FutureBuilder<Map<String, dynamic>?>(
                         future: _weatherFuture,
                         builder: (context, wsnap) {
@@ -507,30 +507,13 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                             );
                           }
                           if (w == null) return const SizedBox.shrink();
-                          final icon = _wmoIcon(w['wmo'] as int?);
-                          final temp = (w['temp'] as double?);
-                          final pop = w['chanceOfRain'] as int?;
-                          final text =
-                              StringBuffer()..write(
-                                temp != null
-                                    ? '${temp.toStringAsFixed(1)}℃'
-                                    : '-℃',
-                              );
-                          if (pop != null) {
-                            text.write(' · 강수확률 $pop%');
-                          }
-                          text.write(' · ${_wmoKoText(w['wmo'] as int?)}');
 
                           return Row(
                             children: [
-                              Icon(icon, size: 18, color: Colors.teal),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  text.toString(),
-                                  style: const TextStyle(fontSize: 13),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                              WeatherSummaryChip(
+                                wmo: w['wmo'] as int?,
+                                temp: w['temp'] as double?,
+                                pop: w['chanceOfRain'] as int?,
                               ),
                               const SizedBox(width: 8),
                               ActionChip(
@@ -549,7 +532,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                                             MaterialPageRoute(
                                               builder:
                                                   (_) =>
-                                                      CampingWeatherAPI14DayScreen(
+                                                      CampingWeatherForecastScreen(
                                                         lat: latitude,
                                                         lng: longitude,
                                                       ),
@@ -884,7 +867,6 @@ class _FilteredReviewList extends StatelessWidget {
   });
 
   bool _hasPhotos(Map<String, dynamic> m) {
-    // 지원하는 키: images / imageUrls / photos (배열)
     for (final key in ['images', 'imageUrls', 'photos']) {
       final v = m[key];
       if (v is List && v.isNotEmpty) return true;
@@ -928,7 +910,6 @@ class _FilteredReviewList extends StatelessWidget {
           return const Text('아직 등록된 리뷰가 없습니다.');
         }
 
-        // Map화
         final items =
             docs.map((d) {
               final m = d.data() as Map<String, dynamic>;
@@ -936,12 +917,8 @@ class _FilteredReviewList extends StatelessWidget {
             }).toList();
 
         final totalCount = items.length;
+        final filtered = photoOnly ? items.where(_hasPhotos).toList() : items;
 
-        // 사진 리뷰만 보기
-        final filtered =
-            photoOnly ? items.where((m) => _hasPhotos(m)).toList() : items;
-
-        // 정렬
         filtered.sort((a, b) {
           final ar = (a['rating'] as num?)?.toDouble() ?? 0.0;
           final br = (b['rating'] as num?)?.toDouble() ?? 0.0;
@@ -952,13 +929,11 @@ class _FilteredReviewList extends StatelessWidget {
 
           switch (sort) {
             case ReviewSort.newest:
-              return bd.compareTo(ad); // 최신순
+              return bd.compareTo(ad);
             case ReviewSort.ratingHigh:
-              // 별점 높은 순, 동일 별점이면 최신순
               final cmp = br.compareTo(ar);
               return cmp != 0 ? cmp : bd.compareTo(ad);
             case ReviewSort.ratingLow:
-              // 별점 낮은 순, 동일 별점이면 최신순
               final cmp = ar.compareTo(br);
               return cmp != 0 ? cmp : bd.compareTo(ad);
           }
@@ -969,7 +944,6 @@ class _FilteredReviewList extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ✅ 총 리뷰 개수(필터 적용 시 표시 개수도 함께)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
@@ -1001,7 +975,6 @@ class _FilteredReviewList extends StatelessWidget {
                 final currentUser = FirebaseAuth.instance.currentUser;
                 final reviewerId = (m['userId'] as String?) ?? '';
 
-                // 액션들
                 List<Widget> actions = [];
                 if (currentUser != null && reviewerId == currentUser.uid) {
                   actions = [
@@ -1095,12 +1068,17 @@ class _FilteredReviewList extends StatelessWidget {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         children:
-                            photos.map((url) {
-                              return ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(url, fit: BoxFit.cover),
-                              );
-                            }).toList(),
+                            photos
+                                .map(
+                                  (url) => ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.network(
+                                      url,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                )
+                                .toList(),
                       ),
                     ],
                   ],
@@ -1114,7 +1092,6 @@ class _FilteredReviewList extends StatelessWidget {
   }
 
   /* ───── 편집 / 삭제 / 신고 다이얼로그 및 동작 ───── */
-
   Future<void> _showEditDialog(
     BuildContext context, {
     required String reviewId,
@@ -1304,54 +1281,7 @@ class _FilteredReviewList extends StatelessWidget {
   }
 }
 
-/* ======================= 헬퍼 (날씨 텍스트/아이콘/평균) ==================== */
 double? _avgNum(dynamic a, dynamic b) {
   if (a == null || b == null) return null;
   return ((a as num).toDouble() + (b as num).toDouble()) / 2.0;
-}
-
-String _wmoKoText(int? code) {
-  switch (code) {
-    case 0:
-      return '맑음';
-    case 1:
-    case 2:
-      return '부분적 흐림';
-    case 3:
-      return '흐림';
-    case 45:
-    case 48:
-      return '안개';
-    case 51:
-    case 53:
-    case 55:
-      return '이슬비';
-    case 61:
-    case 63:
-    case 65:
-      return '비';
-    case 71:
-    case 73:
-    case 75:
-      return '눈';
-    case 80:
-    case 81:
-    case 82:
-      return '소나기';
-    case 95:
-      return '천둥번개';
-    default:
-      return '날씨';
-  }
-}
-
-IconData _wmoIcon(int? code) {
-  if (code == null) return Icons.wb_cloudy;
-  if (code == 0) return Icons.wb_sunny;
-  if ([1, 2].contains(code)) return Icons.cloud_queue;
-  if (code == 3) return Icons.cloud;
-  if ([61, 63, 65, 80, 81, 82].contains(code)) return Icons.water_drop;
-  if ([71, 73, 75].contains(code)) return Icons.ac_unit;
-  if ([95].contains(code)) return Icons.thunderstorm;
-  return Icons.wb_cloudy;
 }

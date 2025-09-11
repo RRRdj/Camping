@@ -1,7 +1,5 @@
-// lib/screens/nearby_map_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:geolocator/geolocator.dart';
 
 import '../repositories/camp_map_repository.dart';
 import '../services/camp_map_html_service.dart';
@@ -24,30 +22,27 @@ class NearbyMapPage extends StatefulWidget {
 }
 
 class _NearbyMapPageState extends State<NearbyMapPage> {
-  // 구미시 기준 좌표
   static const _defaultLat = 36.1190;
   static const _defaultLng = 128.3446;
 
   final _repo = CampMapRepository();
   final _html = CampMapHtmlService();
   final _searchCtrl = TextEditingController();
-  late InAppWebViewController _web;
+
+  InAppWebViewController? _web;
+  bool _webReady = false;
 
   double? _lat, _lng;
   List<Camp> _camps = [], _filtered = [];
-  // 입력 중 추천 리스트
   List<Camp> _suggestions = [];
 
-  // ▼▼▼ 상세보기 토글 상태 (요청 1번)
   String? _openCampId;
   bool _detailOpen = false;
-  // ▲▲▲
 
   @override
   void initState() {
     super.initState();
     _init();
-    // 입력 중 추천 목록 업데이트
     _searchCtrl.addListener(_updateSuggestions);
   }
 
@@ -58,7 +53,6 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
     super.dispose();
   }
 
-  /// 초기화: 기본 좌표(구미) + 캠핑장 데이터 로드
   Future<void> _init() async {
     final camps = await _repo.fetchCamps(widget.selectedDate);
     if (!mounted) return;
@@ -70,7 +64,6 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
     });
   }
 
-  /// '내 위치' 버튼 동작
   Future<void> _moveToCurrentLocation() async {
     try {
       final pos = await _repo.currentPosition();
@@ -83,7 +76,6 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
     } catch (_) {}
   }
 
-  /// 검색 버튼 누를 때 호출
   void _search() {
     final q = _searchCtrl.text.trim().toLowerCase();
     setState(() {
@@ -97,12 +89,11 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                         c.region.toLowerCase().contains(q),
                   )
                   .toList();
-      _suggestions.clear(); // 검색 시 추천 목록 숨김
+      _suggestions.clear();
     });
     _reload();
   }
 
-  /// 입력 중 캠핑장 이름/지역 추천
   void _updateSuggestions() {
     final q = _searchCtrl.text.trim().toLowerCase();
     if (q.isEmpty) {
@@ -115,19 +106,14 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
           c.region.toLowerCase().contains(q),
     );
     setState(() {
-      _suggestions = matches.take(5).toList(); // 최대 5개
+      _suggestions = matches.take(5).toList();
     });
   }
 
-  /// (요청 2번) 클러스터 숫자 Bold CSS 주입
   String _injectClusterBoldCss(String html) {
     const css = '''
 <style>
-  /* Leaflet MarkerCluster 기본 구조 대응 */
-  .marker-cluster div, .marker-cluster span { 
-    font-weight: 700 !important; 
-  }
-  /* 혹시 커스텀 클래스가 있다면 함께 대응 */
+  .marker-cluster div, .marker-cluster span { font-weight: 700 !important; }
   .cluster-text { font-weight: 700 !important; }
 </style>
 ''';
@@ -138,17 +124,15 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
   }
 
   void _reload() {
-    if (_lat == null || _lng == null) return;
+    if (_lat == null || _lng == null || !_webReady || _web == null) return;
     String html = _html.interactiveMapHtml(
       lat: _lat!,
       lng: _lng!,
       camps: _filtered,
       date: widget.selectedDate,
     );
-    // ▼ 숫자 Bold 스타일 삽입
     html = _injectClusterBoldCss(html);
-    // ▲
-    _web.loadData(data: html, mimeType: 'text/html', encoding: 'utf-8');
+    _web!.loadData(data: html, mimeType: 'text/html', encoding: 'utf-8');
   }
 
   @override
@@ -160,13 +144,9 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
       appBar: AppBar(
         title: const Text(
           '내 주변 캠핑장',
-          style: TextStyle(
-            fontWeight: FontWeight.bold, // 또는 FontWeight.w700
-            fontSize: 20, // 필요하다면 크기도 조정
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
       ),
-
       body: Column(
         children: [
           Padding(
@@ -198,7 +178,6 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                     ),
                   ],
                 ),
-                // 추천 리스트
                 if (_suggestions.isNotEmpty)
                   Container(
                     margin: const EdgeInsets.only(top: 4),
@@ -217,7 +196,6 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                           title: Text(camp.name),
                           subtitle: Text(camp.region),
                           onTap: () {
-                            // 선택한 캠핑장으로 중심 이동 후 검색
                             setState(() {
                               _lat = camp.lat;
                               _lng = camp.lng;
@@ -242,28 +220,25 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                   ),
                   onWebViewCreated: (c) {
                     _web = c;
+                    _webReady = true;
                     _reload();
                     c.addJavaScriptHandler(
                       handlerName: 'detail',
                       callback: (args) async {
-                        final cid = args.first as String?;
-                        if (cid == null) return;
+                        final cid =
+                            args.isNotEmpty ? args.first as String? : null;
+                        if (cid == null || _camps.isEmpty) return;
 
-                        // camp 찾기
-                        final camp = _camps.firstWhere(
-                          (e) => e.contentId == cid,
-                          orElse: () => _camps.first,
-                        );
+                        final match = _camps.where((e) => e.contentId == cid);
+                        if (match.isEmpty) return;
+                        final camp = match.first;
 
-                        // ▼▼ 상세보기 토글 로직 (요청 1번)
                         if (_detailOpen && _openCampId == cid) {
-                          // 같은 캠프 아이콘을 다시 누르면 닫기
                           if (mounted) Navigator.of(context).pop();
                           _detailOpen = false;
                           _openCampId = null;
                           return;
                         }
-                        // 다른 캠프가 열려있으면 우선 닫고 새로 열기
                         if (_detailOpen && mounted) {
                           Navigator.of(context).pop();
                           _detailOpen = false;
@@ -277,7 +252,6 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                           MaterialPageRoute(
                             builder:
                                 (_) => CampingInfoScreen(
-                                  // campName은 실제 이름으로 전달하는 게 자연스럽습니다.
                                   campName: camp.name,
                                   available: camp.available,
                                   total: camp.total,
@@ -288,11 +262,9 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                                 ),
                           ),
                         );
-                        // 상세 화면에서 돌아오면 상태 정리
                         if (!mounted) return;
                         _detailOpen = false;
                         _openCampId = null;
-                        // ▲▲
                       },
                     );
                   },

@@ -171,11 +171,14 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: _pwController,
+              obscureText: true,
+              autofillHints: const [AutofillHints.password],
               decoration: const InputDecoration(
                 labelText: '비밀번호',
                 border: OutlineInputBorder(),
               ),
             ),
+
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
@@ -223,7 +226,6 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
                           'campName': _campName,
                           'contentId': _contentId,
                           'reservationUserId': id,
-                          'reservationPassword': pw,
                           'savedAt': now,
                           'email': user.email ?? '',
                         });
