@@ -26,8 +26,8 @@ class Camp {
   final int total;
 
   // ↓ 추가: 선택 날짜의 요약 날씨
-  final double? avgTemp; // 평균기온( (max+min)/2 )
-  final int? chanceOfRain; // 강수확률(평균, %)
+  final double? avgTemp; // 평균기온
+  final int? chanceOfRain; // 강수확률
   final int? wmoCode; // WMO weather code
 
   Camp({
@@ -86,14 +86,14 @@ class Camp {
     final d = selectedDate.day;
     final ok = available > 0;
 
-    /* ① 마커 색상 결정 */
+    // ① 마커 색상 결정
     final markerImg = ok ? _greenMarker : _redMarker;
 
-    /* ② 인포윈도우 내부 색상·텍스트 */
+    // ② 인포윈도우 내부 색상·텍스트
     final col = ok ? '#2ecc71' : '#e74c3c';
     final tag = ok ? '예약가능' : '마감';
 
-    /* ③ 날씨 한 줄(선택 날짜에만) */
+    // ③ 날씨 한 줄
     String weatherLine = '';
     if (avgTemp != null || chanceOfRain != null || wmoCode != null) {
       final wt = _wmoKoText(wmoCode);
@@ -101,38 +101,37 @@ class Camp {
       final t = avgTemp != null ? '${avgTemp!.toStringAsFixed(1)}℃' : '-℃';
       final pop = (chanceOfRain != null) ? ' · 강수확률 ${chanceOfRain!}%' : '';
       weatherLine =
-          '<div style="font-size:12px; color:#333; margin-bottom:8px;">'
+          '<div style="font-size:11px; color:#333; margin-bottom:6px;">'
           ' $emoji $wt · $t$pop'
           '</div>';
     }
 
-    /* ④ 인포윈도우 HTML */
+    // ④ 인포윈도우 HTML (크기 축소)
     final html = '''
 <div style="
-  transform:scale(3);
+  transform:scale(1.6);
   transform-origin:bottom center;
-  padding:8px;
-  max-width:240px;
+  padding:6px;
+  max-width:180px;
   font-family:sans-serif;
   background:#fff;
-  box-shadow:0 2px 6px rgba(0,0,0,.3);
+  box-shadow:0 1px 4px rgba(0,0,0,.25);
   border-radius:6px;">
-  <strong style="font-size:14px; display:block; margin-bottom:4px;">$name</strong>
-  <span style="font-size:12px; color:#555; display:block; margin-bottom:4px;">$region</span>
+  <strong style="font-size:13px; display:block; margin-bottom:4px;">$name</strong>
+  <span style="font-size:11px; color:#555; display:block; margin-bottom:4px;">$region</span>
   $weatherLine
-  <span style="font-size:12px; color:$col; font-weight:bold; display:block; margin-bottom:8px;">
-    ${m}월&nbsp;${d}일&nbsp;$tag&nbsp;($available/$total)
+  <span style="font-size:11px; color:$col; font-weight:bold; display:block; margin-bottom:6px;">
+    ${m}월 ${d}일 $tag ($available/$total)
   </span>
 
-  <div style="display:flex; gap:6px;">
-    <button style="flex:1; padding:8px; border:none; background:#007aff; color:#fff;
-                   border-radius:6px; cursor:pointer;"
+  <div style="display:flex; gap:4px;">
+    <button style="flex:1; padding:6px; border:none; background:#007aff; color:#fff;
+                   border-radius:4px; font-size:11px; cursor:pointer;"
             onclick="window.flutter_inappwebview.callHandler('detail','$contentId')">
       상세정보
     </button>
-
-    <button style="flex:1; padding:8px; border:none; background:#555; color:#fff;
-                   border-radius:6px; cursor:pointer;"
+    <button style="flex:1; padding:6px; border:none; background:#555; color:#fff;
+                   border-radius:4px; font-size:11px; cursor:pointer;"
             onclick="openRoadviewAt($lat,$lng)">
       로드뷰
     </button>
@@ -142,7 +141,7 @@ class Camp {
 
     final encoded = jsonEncode(html);
 
-    /* ⑤ 마커 + 인포윈도우 JS (클러스터러에 등록) */
+    // ⑤ 마커 + 인포윈도우 JS (토글 + 닫기 지원)
     return """
 (function(){
   var pos = new kakao.maps.LatLng($lat, $lng);
@@ -150,8 +149,8 @@ class Camp {
     position: pos,
     image: new kakao.maps.MarkerImage(
       '$markerImg',
-      new kakao.maps.Size(72,105),
-      { offset: new kakao.maps.Point(36,105) }
+      new kakao.maps.Size(36,52),
+      { offset: new kakao.maps.Point(18,52) }
     )
   });
   clusterer.addMarker(marker);
@@ -165,7 +164,7 @@ class Camp {
 """;
   }
 
-  // ── WMO → 한글 텍스트/이모지 매퍼 (홈 화면과 동일한 의미)
+  // ── WMO → 한글 텍스트/이모지 매퍼
   static String _wmoKoText(int? code) {
     switch (code) {
       case 0:
@@ -276,7 +275,7 @@ class CampMapRepository {
     return enriched;
   }
 
-  /// Open-Meteo 하루 데이터(홈 화면과 동일 컨셉)
+  /// Open-Meteo 하루 데이터
   Future<Map<String, dynamic>?> _fetchWeatherForDate(
     double lat,
     double lng,
@@ -287,7 +286,6 @@ class CampMapRepository {
     final today = just(DateTime.now());
     final diffDays = d.difference(today).inDays;
 
-    // 과거 또는 14일 범위 밖이면 표시하지 않음
     if (diffDays < 0 || diffDays > 13) return null;
 
     final dateStr = DateFormat('yyyy-MM-dd').format(d);

@@ -9,7 +9,7 @@ import '../campground_data.dart';
 import 'camping_info_screen.dart';
 import '../repositories/real_time_availability_repository.dart';
 import '../repositories/campground_repository.dart';
-import '../services/camp_map_html_service.dart' show CampMapHtmlService;
+import '../services/map_html_service.dart';
 
 double? _avgNum(dynamic a, dynamic b) {
   if (a == null || b == null) return null;
@@ -222,7 +222,7 @@ class BookmarkScreen extends StatefulWidget {
 class _BookmarkScreenState extends State<BookmarkScreen> {
   final _availRepo = RealTimeAvailabilityRepository();
   final _campRepo = CampgroundRepository();
-  final _util = CampMapHtmlService();
+  final _util = MapHtmlService();
 
   late final Future<List<Map<String, dynamic>>> _campsOnce;
 

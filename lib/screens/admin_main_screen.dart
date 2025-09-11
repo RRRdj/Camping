@@ -1,5 +1,3 @@
-// lib/screens/admin_dashboard_screen.dart
-
 import 'package:flutter/material.dart';
 
 class AdminDashboardScreen extends StatelessWidget {

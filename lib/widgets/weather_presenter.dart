@@ -50,3 +50,31 @@ IconData wmoIcon(int? code) {
   if ([51, 53, 55].contains(code)) return Icons.grain;
   return Icons.wb_cloudy;
 }
+
+/// PM10 / PM2.5 기준으로 등급 반환
+String krGradePm10(double v) {
+  if (v <= 30) return '좋음';
+  if (v <= 80) return '보통';
+  if (v <= 150) return '나쁨';
+  return '매우 나쁨';
+}
+
+String krGradePm25(double v) {
+  if (v <= 15) return '좋음';
+  if (v <= 35) return '보통';
+  if (v <= 75) return '나쁨';
+  return '매우 나쁨';
+}
+
+/// PM10 / PM2.5 수치를 받아 한 줄 요약 텍스트 생성
+String? airLine(double? pm10, double? pm25) {
+  if (pm10 == null && pm25 == null) return null;
+  final parts = <String>[];
+  if (pm10 != null) {
+    parts.add('PM10 ${pm10.toStringAsFixed(0)}㎍/㎥ (${krGradePm10(pm10)})');
+  }
+  if (pm25 != null) {
+    parts.add('PM2.5 ${pm25.toStringAsFixed(0)}㎍/㎥ (${krGradePm25(pm25)})');
+  }
+  return parts.join(' · ');
+}

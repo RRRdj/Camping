@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'camping_info_screen.dart';
-import 'prototype_screen.dart';
+import 'place_search_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum RatingSort { none, highFirst, lowFirst }
@@ -535,22 +535,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
         scrolledUnderElevation: 0,
 
         actions: [
-          // (선택) 위치 프로토타입 화면 버튼
-          IconButton(
-            icon: const Icon(Icons.my_location_outlined),
-            tooltip: '프로토타입 테스트',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (_) =>
-                          PrototypeScreen(onLocationChange: updateUserLocation),
-                ),
-              );
-            },
-          ),
-          // 필터 버튼
           IconButton(
             icon: const Icon(Icons.tune),
             onPressed: () {
@@ -720,7 +704,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                 children: [
                                   Text('$count개의 캠핑장이 검색되었어요!'),
                                   const SizedBox(width: 12),
-                                  if (_currentPlaceName.isNotEmpty)
+                                  if (_currentPlaceName.isNotEmpty) ...[
                                     Text(
                                       '현위치 : $_currentPlaceName',
                                       style: const TextStyle(
@@ -728,8 +712,39 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                         color: Colors.grey,
                                       ),
                                     ),
+                                    const SizedBox(width: 4),
+                                    TextButton(
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 0,
+                                        ),
+                                        minimumSize: Size.zero, // 최소 사이즈 제거
+                                        tapTargetSize:
+                                            MaterialTapTargetSize
+                                                .shrinkWrap, // 터치 영역 최소화
+                                      ),
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (_) => PlaceSearchScreen(
+                                                  onLocationChange:
+                                                      updateUserLocation,
+                                                ),
+                                          ),
+                                        );
+                                      },
+                                      child: const Text(
+                                        '변경',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
+
                               const SizedBox(height: 4),
                               CheckboxListTile(
                                 contentPadding: EdgeInsets.zero,

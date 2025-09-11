@@ -1,8 +1,9 @@
+import 'package:camping/screens/place_search_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../repositories/camp_map_repository.dart';
-import '../services/camp_map_html_service.dart';
+import '../services/map_html_service.dart';
 import 'camping_info_screen.dart';
 
 class NearbyMapPage extends StatefulWidget {
@@ -26,7 +27,7 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
   static const _defaultLng = 128.3446;
 
   final _repo = CampMapRepository();
-  final _html = CampMapHtmlService();
+  final _html = MapHtmlService();
   final _searchCtrl = TextEditingController();
 
   InAppWebViewController? _web;
@@ -146,7 +147,31 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
           '내 주변 캠핑장',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.my_location),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (_) => PlaceSearchScreen(
+                        onLocationChange: (placeName, lat, lng) {
+                          // 필요하다면 위치 변경 로직 연결
+                          setState(() {
+                            _lat = lat;
+                            _lng = lng;
+                          });
+                          _reload();
+                        },
+                      ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
+
       body: Column(
         children: [
           Padding(

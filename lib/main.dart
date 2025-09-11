@@ -21,6 +21,9 @@ import 'package:camping/screens/alarm_manage_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 
+// 최상단 import들 사이에 추가
+import 'config/kakao_js_key.dart'; // KakaoJsKey InheritedWidget
+
 // 전역 테마 서비스
 import 'services/theme_service.dart';
 
@@ -41,7 +44,8 @@ void main() async {
   // 사용자별 테마 모드 초기화
   await ThemeService().init();
 
-  runApp(const MyApp());
+  const jsKey = String.fromEnvironment('KAKAO_JS_KEY'); // --dart-define로 주입
+  runApp(KakaoJsKey(jsKey: jsKey, child: const MyApp()));
 }
 
 class MyApp extends StatelessWidget {
