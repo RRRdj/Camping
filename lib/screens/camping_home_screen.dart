@@ -765,7 +765,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                 segments: const <ButtonSegment<RatingSort>>[
                                   ButtonSegment(
                                     value: RatingSort.none,
-                                    label: Text('기본'),
+                                    label: Text('거리 순'),
                                     icon: Icon(Icons.sort),
                                   ),
                                   ButtonSegment(

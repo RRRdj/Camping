@@ -31,7 +31,8 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
   final _searchCtrl = TextEditingController();
 
   InAppWebViewController? _web;
-  bool _webReady = false;
+  bool _webReady = false; // WebView 생성 완료 여부
+  bool _pageLoaded = false; // HTML 로드 완료 여부
 
   double? _lat, _lng;
   List<Camp> _camps = [], _filtered = [];
@@ -39,6 +40,9 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
 
   String? _openCampId;
   bool _detailOpen = false;
+
+  // 페이지 로딩 전 요청된 중심 이동을 저장해두는 버퍼
+  double? _pendingCenterLat, _pendingCenterLng;
 
   @override
   void initState() {
@@ -65,16 +69,51 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
     });
   }
 
+  /// 위치 권한/예외를 보여주고, JS로 중심만 이동 → 실패 시 전체 재로딩 폴백
   Future<void> _moveToCurrentLocation() async {
     try {
       final pos = await _repo.currentPosition();
       if (!mounted) return;
+
+      final newLat = pos.latitude;
+      final newLng = pos.longitude;
+
       setState(() {
-        _lat = pos.latitude;
-        _lng = pos.longitude;
+        _lat = newLat;
+        _lng = newLng;
       });
-      _reload();
-    } catch (_) {}
+
+      final moved = await _centerMapViaJs(newLat, newLng);
+      if (!moved) {
+        _reload();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('현재 위치를 가져올 수 없습니다: $e')));
+    }
+  }
+
+  /// JS 함수로 지도 중심만 이동. 성공 시 true
+  Future<bool> _centerMapViaJs(double lat, double lng) async {
+    if (_web == null || !_webReady) return false;
+
+    // 아직 HTML이 로드되지 않았다면 로드 후 적용
+    if (!_pageLoaded) {
+      _pendingCenterLat = lat;
+      _pendingCenterLng = lng;
+      return false;
+    }
+
+    try {
+      final result = await _web!.evaluateJavascript(
+        source: 'window.__centerMap && window.__centerMap($lat, $lng)',
+      );
+      return result == true || result == 'true';
+    } catch (_) {
+      return false;
+    }
   }
 
   void _search() {
@@ -133,6 +172,7 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
       date: widget.selectedDate,
     );
     html = _injectClusterBoldCss(html);
+    _pageLoaded = false;
     _web!.loadData(data: html, mimeType: 'text/html', encoding: 'utf-8');
   }
 
@@ -157,12 +197,14 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                   builder:
                       (_) => PlaceSearchScreen(
                         onLocationChange: (placeName, lat, lng) {
-                          // 필요하다면 위치 변경 로직 연결
                           setState(() {
                             _lat = lat;
                             _lng = lng;
                           });
-                          _reload();
+                          // 검색으로 이동 시에도 JS 우선 시도
+                          _centerMapViaJs(lat, lng).then((ok) {
+                            if (!ok) _reload();
+                          });
                         },
                       ),
                 ),
@@ -171,7 +213,6 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
           ),
         ],
       ),
-
       body: Column(
         children: [
           Padding(
@@ -227,7 +268,9 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                               _searchCtrl.text = camp.name;
                               _suggestions.clear();
                             });
-                            _search();
+                            _centerMapViaJs(camp.lat, camp.lng).then((ok) {
+                              if (!ok) _search(); // 검색 결과 재로딩 폴백
+                            });
                           },
                         );
                       },
@@ -292,6 +335,16 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                         _openCampId = null;
                       },
                     );
+                  },
+                  onLoadStop: (c, url) async {
+                    _pageLoaded = true;
+                    if (_pendingCenterLat != null &&
+                        _pendingCenterLng != null) {
+                      final lat = _pendingCenterLat!;
+                      final lng = _pendingCenterLng!;
+                      _pendingCenterLat = _pendingCenterLng = null;
+                      await _centerMapViaJs(lat, lng);
+                    }
                   },
                 ),
                 Positioned(

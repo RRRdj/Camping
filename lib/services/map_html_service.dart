@@ -1,4 +1,3 @@
-// lib/services/map_html_service.dart
 import 'package:intl/intl.dart';
 import '../repositories/camp_map_repository.dart'; // Camp.toMarkerJs(DateTime) 사용
 
@@ -30,10 +29,8 @@ class MapHtmlService {
   }) {
     final markersJs = StringBuffer();
 
-    // 현재 위치 마커
-    markersJs.writeln(
-      '(function(){new kakao.maps.Marker({position:new kakao.maps.LatLng($lat,$lng)}).setMap(map);}());',
-    );
+    // 🔸 기존에는 "현재 위치 마커 1회 추가" JS를 여기서 넣었으나,
+    //     이제는 전역 currMarker로 관리하므로 중복 추가하지 않음.
 
     // 캠핑장 마커 (Camp.toMarkerJs가 InfoWindow/JS 핸들(detail) 호출 포함)
     for (final camp in camps) {
@@ -60,12 +57,11 @@ class MapHtmlService {
     #container.view_roadview #mapWrapper{flex:0 0 50%;}
     #container.view_roadview #roadview{display:block;flex:0 0 50%;height:50%;}
 
-    /* ✅ 로드뷰 버튼: 작게 */
     #roadviewControl{
       position:absolute;top:10px;left:10px;z-index:7;
       background:#fff;border:1px solid #ccc;border-radius:4px;
-      padding:6px 12px;           /* 12px 20px -> 6px 12px */
-      font-size:14px;             /* 28px -> 14px */
+      padding:6px 12px;
+      font-size:14px;
       cursor:pointer;
       box-shadow:0 1px 3px rgba(0,0,0,.08);
     }
@@ -78,19 +74,16 @@ class MapHtmlService {
     }
     #container.view_roadview #rvClose{display:block;}
 
-    /* ✅ 인포윈도우에 쓸 수 있는 작고 단정한 스타일 (toMarkerJs에서 감싸서 사용) */
     .camp-iw{
-      padding:6px 8px;            /* 10px -> 6~8px */
-      font-size:12px;             /* 14px -> 12px */
+      padding:6px 8px;
+      font-size:12px;
       line-height:1.35;
       color:#111;
-      max-width:220px;            /* 너무 넓지 않게 */
+      max-width:220px;
     }
-    .camp-iw h4{
-      margin:0 0 4px 0;font-size:13px;font-weight:700;
-    }
-    .camp-iw .sub{color:#666;font-size:11px;}
-    .camp-iw .row{margin-top:6px;}
+    .camp-iw h4{ margin:0 0 4px 0;font-size:13px;font-weight:700; }
+    .camp-iw .sub{ color:#666;font-size:11px; }
+    .camp-iw .row{ margin-top:6px; }
     .camp-iw .btn{
       display:inline-block;margin-top:8px;padding:6px 10px;border-radius:6px;
       background:#1976d2;color:#fff;text-decoration:none;font-size:12px;
@@ -147,15 +140,12 @@ class MapHtmlService {
     infoWindows.push(infoWindow);
   }
 
-  // ✅ 인포윈도우 내용 감싸기 헬퍼 (작은 스타일 적용)
-  // Camp.toMarkerJs에서: const iw = new kakao.maps.InfoWindow({content: wrapIw(html)});
-  // 처럼 사용하면 .camp-iw 스타일이 적용됩니다.
+  // 인포윈도우 내용 감싸기
   window.wrapIw = function(innerHtml){
     return '<div class="camp-iw">'+ innerHtml +'</div>';
   }
 
-  // ✅ 작아진 마커 이미지 헬퍼 (28px 권장)
-  // Camp.toMarkerJs에서: image: smallMarkerImage('URL', 28, 28)
+  // 작은 마커 이미지 헬퍼
   window.smallMarkerImage = function(url, w, h){
     w = w || 28; h = h || 28;
     return new kakao.maps.MarkerImage(
@@ -165,20 +155,30 @@ class MapHtmlService {
     );
   }
 
-  const container = document.getElementById('container'),
-        map       = new kakao.maps.Map(document.getElementById('map'), {center:new kakao.maps.LatLng($lat,$lng), level:3}),
-        clusterer = new kakao.maps.MarkerClusterer({ map: map, averageCenter: true, minLevel: 5, gridSize: 100 }),
-        rv        = new kakao.maps.Roadview(document.getElementById('roadview')),
-        rvClient  = new kakao.maps.RoadviewClient(),
-        button    = document.getElementById('roadviewControl'),
-        rvMarker  = new kakao.maps.Marker({
-          image:new kakao.maps.MarkerImage(
-            'https://t1.daumcdn.net/localimg/localimages/07/2018/pc/roadview_minimap_wk_2018.png',
-            new kakao.maps.Size(10,20), /* 작게 */
-            {spriteSize:new kakao.maps.Size(1666,168), spriteOrigin:new kakao.maps.Point(705,114), offset:new kakao.maps.Point(10,20)}
-          ),
-          position:map.getCenter(), draggable:true
-        });
+  const container = document.getElementById('container');
+  const map = new kakao.maps.Map(document.getElementById('map'), {
+    center:new kakao.maps.LatLng($lat,$lng), level:3
+  });
+  const clusterer = new kakao.maps.MarkerClusterer({
+    map: map, averageCenter: true, minLevel: 5, gridSize: 100
+  });
+
+  // ✅ 현재 위치 마커(전역)
+  let currMarker = new kakao.maps.Marker({ position: map.getCenter() });
+  currMarker.setMap(map);
+
+  // 로드뷰
+  const rv = new kakao.maps.Roadview(document.getElementById('roadview'));
+  const rvClient  = new kakao.maps.RoadviewClient();
+  const button    = document.getElementById('roadviewControl');
+  const rvMarker  = new kakao.maps.Marker({
+    image:new kakao.maps.MarkerImage(
+      'https://t1.daumcdn.net/localimg/localimages/07/2018/pc/roadview_minimap_wk_2018.png',
+      new kakao.maps.Size(10,20),
+      {spriteSize:new kakao.maps.Size(1666,168), spriteOrigin:new kakao.maps.Point(705,114), offset:new kakao.maps.Point(10,20)}
+    ),
+    position:map.getCenter(), draggable:true
+  });
   let overlayOn=false;
 
   function toggleRoadviewUI(){
@@ -208,16 +208,19 @@ class MapHtmlService {
   kakao.maps.event.addListener(rvMarker,'dragend',function(e){ moveTo(e.latLng); });
   kakao.maps.event.addListener(map,'click',function(e){
     if(overlayOn){ rvMarker.setPosition(e.latLng); moveTo(e.latLng); }
-    // 빈 공간 클릭 시 열린 인포윈도우 닫기
     infoWindows.forEach(function(iw){ iw.close(); }); infoWindows.length=0;
   });
 
-  // Dart에서 호출할 수 있게 노출
-  window.openRoadviewAt = function(lat, lng){
-    if(!button.classList.contains('active')) toggleRoadviewUI();
-    const pos = new kakao.maps.LatLng(lat, lng);
-    rvMarker.setPosition(pos);
-    moveTo(pos);
+  // ✅ Dart에서 호출할 지도 중심 이동 함수 (현재 위치 마커도 함께 이동)
+  window.__centerMap = function(lat, lng){
+    try{
+      const pos = new kakao.maps.LatLng(lat, lng);
+      map.setCenter(pos);
+      if (currMarker) currMarker.setPosition(pos);
+      return true;
+    } catch(e){
+      return false;
+    }
   };
 
   // 캠핑장 마커들 추가

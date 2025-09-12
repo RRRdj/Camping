@@ -20,7 +20,7 @@ class MemoBox extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              memoText.isNotEmpty ? memoText : '잊기 쉬운 내용을 남겨주세요!',
+              memoText.isNotEmpty ? memoText : '나만의 캠핑장 꿀팁을!',
               style: TextStyle(
                 color: memoText.isNotEmpty ? Colors.black : Colors.grey,
               ),

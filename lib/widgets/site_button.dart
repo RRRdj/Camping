@@ -26,7 +26,7 @@ class SiteButton extends StatelessWidget {
           ).showSnackBar(const SnackBar(content: Text('사이트를 열 수 없습니다.')));
         }
       },
-      child: const Text('관련 사이트', style: TextStyle(color: Colors.white)),
+      child: const Text('홈페이지 이동', style: TextStyle(color: Colors.white)),
     );
   }
 }
