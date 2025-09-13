@@ -38,10 +38,10 @@ class AuthService {
   /* ───────────── Email/PW 로그인 ───────────── */
 
   Future<UserCredential> signIn(
-      String email,
-      String pw, {
-        bool remember = false,
-      }) async {
+    String email,
+    String pw, {
+    bool remember = false,
+  }) async {
     final cred = await _auth.signInWithEmailAndPassword(
       email: email,
       password: pw,
@@ -58,9 +58,14 @@ class AuthService {
   /* ───────────── Kakao 로그인 (Firebase 연동) ───────────── */
 
   /// 백엔드에 카카오 액세스 토큰을 보내면, 검증 후 Firebase Custom Token을 받아서 로그인
-  Future<UserCredential> signInWithKakaoToken(String kakaoAccessToken, {bool remember = false}) async {
+  Future<UserCredential> signInWithKakaoToken(
+    String kakaoAccessToken, {
+    bool remember = false,
+  }) async {
     // 1. 백엔드로 카카오 토큰 전송해서 Firebase custom token 받기
-    final uri = Uri.parse('https://kakaoauth-xgyfbbhnvq-uc.a.run.app/kakaoAuth'); // 실제 엔드포인트로 교체
+    final uri = Uri.parse(
+      'https://kakaoauth-xgyfbbhnvq-uc.a.run.app/kakaoAuth',
+    ); // 실제 엔드포인트로 교체
     final resp = await http.post(
       uri,
       headers: {'Content-Type': 'application/json'},

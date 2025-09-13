@@ -23,7 +23,6 @@ class AdminReviewScreen extends StatelessWidget {
           .doc(userId)
           .collection('reviews');
 
-  // 간단 메모이즈: 동일 contentId/camp, review를 반복 조회할 때 낭비 방지
   static final Map<String, Future<QuerySnapshot<Map<String, dynamic>>>>
   _campByContentIdFuture = {};
   static final Map<String, Future<DocumentSnapshot<Map<String, dynamic>>>>
@@ -90,7 +89,6 @@ class AdminReviewScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 1) 신고 기본 정보
                       Row(
                         children: [
                           Expanded(
@@ -113,8 +111,6 @@ class AdminReviewScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-
-                      // 2) 야영장 정보 (메모이즈된 Future)
                       FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
                         future:
                             contentId.isEmpty
@@ -143,8 +139,6 @@ class AdminReviewScreen extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 12),
-
-                      // 3) 원본 리뷰 + 신고자/사유/처리완료 (메모이즈된 Future)
                       FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                         future:
                             (contentId.isEmpty || reviewId.isEmpty)
@@ -185,7 +179,6 @@ class AdminReviewScreen extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(origContent),
                               const SizedBox(height: 8),
-
                               if (imageUrls.isNotEmpty) ...[
                                 const Text('사진:'),
                                 const SizedBox(height: 8),
@@ -257,14 +250,12 @@ class AdminReviewScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 12),
                               ],
-
                               Text(
                                 '신고자: $reporterNick (${reporterEmail.isEmpty ? '이메일 미제공' : reporterEmail})',
                               ),
                               const SizedBox(height: 4),
                               Text('사유: $reason'),
                               const SizedBox(height: 12),
-
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: ElevatedButton(
@@ -310,11 +301,9 @@ class AdminReviewScreen extends StatelessWidget {
                                     try {
                                       final batch =
                                           FirebaseFirestore.instance.batch();
-                                      // 1) 신고 문서 삭제
                                       batch.delete(
                                         _reportColl.doc(reportDoc.id),
                                       );
-                                      // 2) campground_reviews 리뷰 삭제
                                       if (contentId.isNotEmpty &&
                                           reviewId.isNotEmpty) {
                                         batch.delete(
@@ -323,7 +312,6 @@ class AdminReviewScreen extends StatelessWidget {
                                           ).doc(reviewId),
                                         );
                                       }
-                                      // 3) user_reviews 리뷰 삭제 (가능하면 매칭)
                                       if (origUserId.isNotEmpty &&
                                           origDate != null &&
                                           contentId.isNotEmpty) {

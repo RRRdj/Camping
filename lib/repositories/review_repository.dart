@@ -6,7 +6,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
-/// 사용자 리뷰 저장소: Firestore 및 Storage 동기화
 class ReviewRepository {
   final FirebaseFirestore _fire = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
@@ -15,7 +14,6 @@ class ReviewRepository {
 
   String get _uid => _auth.currentUser!.uid;
 
-  /// 내가 쓴 리뷰 스트림
   Stream<QuerySnapshot<Map<String, dynamic>>> userReviewsStream() {
     final uid = _uid;
     return _fire
@@ -26,7 +24,6 @@ class ReviewRepository {
         .snapshots();
   }
 
-  /// 리뷰 생성 (user_reviews + campground_reviews 동기화)
   Future<void> addReview({
     required String contentId,
     required String campName,
@@ -38,7 +35,6 @@ class ReviewRepository {
     final now = DateTime.now();
     final batch = _fire.batch();
 
-    // 이미지 업로드
     List<String> imageUrls = [];
     if (imageFiles != null) {
       for (final file in imageFiles) {
@@ -51,13 +47,13 @@ class ReviewRepository {
       }
     }
 
-    // 새로운 문서 ID
-    final docId = _fire
-        .collection('campground_reviews')
-        .doc(contentId)
-        .collection('reviews')
-        .doc()
-        .id;
+    final docId =
+        _fire
+            .collection('campground_reviews')
+            .doc(contentId)
+            .collection('reviews')
+            .doc()
+            .id;
 
     final data = {
       'userId': uid,
@@ -68,7 +64,6 @@ class ReviewRepository {
       'imageUrls': imageUrls,
     };
 
-    // 배치로 두 컬렉션에 동기화
     batch.set(
       _fire
           .collection('campground_reviews')
@@ -89,7 +84,6 @@ class ReviewRepository {
     await batch.commit();
   }
 
-  /// 리뷰 수정 (user_reviews + campground_reviews 동기화, 이미지 추가/삭제)
   Future<void> updateReview({
     required String contentId,
     required String reviewId,
@@ -101,7 +95,6 @@ class ReviewRepository {
     final uid = _uid;
     final batch = _fire.batch();
 
-    // 문서 참조
     final campRef = _fire
         .collection('campground_reviews')
         .doc(contentId)
@@ -113,11 +106,9 @@ class ReviewRepository {
         .collection('reviews')
         .doc(reviewId);
 
-    // 기존 URL 로드
     final snap = await campRef.get();
     List<String> urls = List<String>.from(snap.data()?['imageUrls'] ?? []);
 
-    // 이미지 삭제
     if (removeImageUrls != null) {
       for (final url in removeImageUrls) {
         try {
@@ -127,7 +118,6 @@ class ReviewRepository {
       }
     }
 
-    // 새로운 이미지 업로드
     if (newImageFiles != null) {
       for (final file in newImageFiles) {
         final ext = file.path.split('.').last;
@@ -139,7 +129,6 @@ class ReviewRepository {
       }
     }
 
-    // 업데이트 데이터
     final updateData = {
       'rating': rating,
       'content': content,
@@ -147,23 +136,18 @@ class ReviewRepository {
       'date': FieldValue.serverTimestamp(),
     };
 
-    // 배치로 동기화
     batch.update(campRef, updateData);
     batch.update(userRef, updateData);
     await batch.commit();
   }
 
-
-
-/// 리뷰 삭제 (user_reviews + campground_reviews 동기화)
   Future<void> deleteReview({
     required String userReviewId,
     required String? contentId,
     required String? content,
     required Timestamp? date,
   }) async {
-    final uid = _uid!;
-    // Firestore 직접 ID 참조
+    final uid = _uid;
     final docId = userReviewId;
     final batch = _fire.batch();
     if (contentId != null) {
@@ -185,5 +169,3 @@ class ReviewRepository {
     await batch.commit();
   }
 }
-
-

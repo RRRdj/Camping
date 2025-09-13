@@ -59,7 +59,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(title: const Text('환경설정')),
       body: ListView(
         children: [
-          // 알림 스위치 (기존 그대로)
           SwitchListTile(
             title: const Text('푸시 알림 수신'),
             value: notificationEnabled,
@@ -69,7 +68,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
 
-          // ✅ 다크 모드: 전역 ThemeService와 연결
           ValueListenableBuilder<ThemeMode>(
             valueListenable: ThemeService().themeMode,
             builder: (_, mode, __) {
@@ -83,7 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 value: isDark,
                 onChanged: (bool value) {
-                  ThemeService().setDarkEnabled(value); // 전역 변경 + Firestore 저장
+                  ThemeService().setDarkEnabled(value);
                 },
                 secondary: PopupMenuButton<String>(
                   tooltip: '모드 선택',

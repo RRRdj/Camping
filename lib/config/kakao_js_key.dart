@@ -1,4 +1,3 @@
-// lib/config/kakao_js_key.dart
 import 'package:flutter/widgets.dart';
 
 class KakaoJsKey extends InheritedWidget {

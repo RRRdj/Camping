@@ -1,5 +1,3 @@
-// lib/screens/login_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
@@ -49,17 +47,20 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/main');
     } on fb.FirebaseAuthException catch (e) {
-      final msg = (e.code == 'user-not-found' || e.code == 'wrong-password')
-          ? '이메일 또는 비밀번호가 올바르지 않습니다.'
-          : '로그인에 실패했습니다.';
+      final msg =
+          (e.code == 'user-not-found' || e.code == 'wrong-password')
+              ? '이메일 또는 비밀번호가 올바르지 않습니다.'
+              : '로그인에 실패했습니다.';
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(msg)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('로그인 중 오류가 발생했습니다. $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('로그인 중 오류가 발생했습니다. $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -69,7 +70,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loginWithKakao() async {
     setState(() => _loading = true);
     try {
-      // 1. 카카오 로그인
       kakao.OAuthToken token;
       try {
         token = await kakao.UserApi.instance.loginWithKakaoTalk();
@@ -77,21 +77,17 @@ class _LoginScreenState extends State<LoginScreen> {
         token = await kakao.UserApi.instance.loginWithKakaoAccount();
       }
 
-      // 2. 사용자 정보 가져오기
       final kakao.User kakaoUser = await kakao.UserApi.instance.me();
       final nickname = kakaoUser.kakaoAccount?.profile?.nickname ?? '사용자';
-      final profileImageUrl =
-          kakaoUser.kakaoAccount?.profile?.profileImageUrl;
-      final email = kakaoUser.kakaoAccount?.email; // null 가능
+      final profileImageUrl = kakaoUser.kakaoAccount?.profile?.profileImageUrl;
+      final email = kakaoUser.kakaoAccount?.email;
 
-      // 3. Firebase custom token 교환 및 로그인
       await _authSvc.signInWithKakaoToken(
         token.accessToken,
         remember: _remember,
       );
       final fb.User? user = fb.FirebaseAuth.instance.currentUser;
 
-      // 4. Firestore에 정보 저장/병합
       if (user != null) {
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'name': nickname,
@@ -115,8 +111,9 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           message += ': $error';
         }
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -153,73 +150,76 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(title: const Text('금오캠핑'), centerTitle: true),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-          keyboardDismissBehavior:
-          ScrollViewKeyboardDismissBehavior.onDrag,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(height: 48),
-              const Text(
-                '로그인',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+        child:
+            _loading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 48),
+                      const Text(
+                        '로그인',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      TextField(
+                        controller: _emailCtr,
+                        decoration: const InputDecoration(
+                          labelText: '이메일',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _pwCtr,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: '비밀번호',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      CheckboxListTile(
+                        value: _remember,
+                        onChanged:
+                            (v) => setState(() => _remember = v ?? false),
+                        title: const Text('자동 로그인'),
+                        controlAffinity: ListTileControlAffinity.leading,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loginWithEmail,
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 48),
+                        ),
+                        child: const Text('로그인'),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildKakaoButton(),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed:
+                            () => Navigator.pushNamed(context, '/signup'),
+                        child: const Text('회원가입'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pushNamed(context, '/admin'),
+                        child: const Text(
+                          '관리자 전용 화면',
+                          style: TextStyle(color: Colors.redAccent),
+                        ),
+                      ),
+                      const SizedBox(height: 48),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 32),
-              TextField(
-                controller: _emailCtr,
-                decoration: const InputDecoration(
-                  labelText: '이메일',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _pwCtr,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: '비밀번호',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              CheckboxListTile(
-                value: _remember,
-                onChanged: (v) => setState(() => _remember = v ?? false),
-                title: const Text('자동 로그인'),
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _loginWithEmail,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 48),
-                ),
-                child: const Text('로그인'),
-              ),
-              const SizedBox(height: 8),
-              _buildKakaoButton(),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.pushNamed(context, '/signup'),
-                child: const Text('회원가입'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pushNamed(context, '/admin'),
-                child: const Text(
-                  '관리자 전용 화면',
-                  style: TextStyle(color: Colors.redAccent),
-                ),
-              ),
-              const SizedBox(height: 48),
-            ],
-          ),
-        ),
       ),
     );
   }

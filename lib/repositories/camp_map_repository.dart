@@ -9,12 +9,8 @@ const _greenMarker =
 const _redMarker =
     'https://img.icons8.com/?size=50&id=kqCJWucG32lh&format=png&color=FA5252';
 
-/// 좌표·날짜별 날씨 캐시 (중복 호출 방지)
 final Map<String, Map<String, dynamic>?> _weatherCache = {};
 
-/// ──────────────────────────────────
-/// Camp 모델
-/// ──────────────────────────────────
 class Camp {
   final String contentId;
   final String name;
@@ -24,11 +20,9 @@ class Camp {
   final double lng;
   final int available;
   final int total;
-
-  // ↓ 추가: 선택 날짜의 요약 날씨
-  final double? avgTemp; // 평균기온
-  final int? chanceOfRain; // 강수확률
-  final int? wmoCode; // WMO weather code
+  final double? avgTemp;
+  final int? chanceOfRain;
+  final int? wmoCode;
 
   Camp({
     required this.contentId,
@@ -80,20 +74,14 @@ class Camp {
     );
   }
 
-  /// 카카오맵 마커 + 인포윈도우 JS
   String toMarkerJs(DateTime selectedDate) {
     final m = selectedDate.month;
     final d = selectedDate.day;
     final ok = available > 0;
-
-    // ① 마커 색상 결정
     final markerImg = ok ? _greenMarker : _redMarker;
-
-    // ② 인포윈도우 내부 색상·텍스트
     final col = ok ? '#2ecc71' : '#e74c3c';
     final tag = ok ? '예약가능' : '마감';
 
-    // ③ 날씨 한 줄
     String weatherLine = '';
     if (avgTemp != null || chanceOfRain != null || wmoCode != null) {
       final wt = _wmoKoText(wmoCode);
@@ -106,7 +94,6 @@ class Camp {
           '</div>';
     }
 
-    // ④ 인포윈도우 HTML (크기 축소)
     final html = '''
 <div style="
   transform:scale(1.6);
@@ -141,7 +128,6 @@ class Camp {
 
     final encoded = jsonEncode(html);
 
-    // ⑤ 마커 + 인포윈도우 JS (토글 + 닫기 지원)
     return """
 (function(){
   var pos = new kakao.maps.LatLng($lat, $lng);
@@ -164,7 +150,6 @@ class Camp {
 """;
   }
 
-  // ── WMO → 한글 텍스트/이모지 매퍼
   static String _wmoKoText(int? code) {
     switch (code) {
       case 0:
@@ -213,9 +198,6 @@ class Camp {
   }
 }
 
-/// ──────────────────────────────────
-/// 위치 + Firestore + 날씨 리포지토리
-/// ──────────────────────────────────
 class CampMapRepository {
   final _fire = FirebaseFirestore.instance;
 
@@ -235,7 +217,6 @@ class CampMapRepository {
   }
 
   Future<List<Camp>> fetchCamps(DateTime selectedDate) async {
-    // 1) 기본 캠프 + (국립/지자체만 남김)
     final campSnap = await _fire.collection('campgrounds').get();
     var camps =
         campSnap.docs.map((d) => Camp.fromDoc(d)).toList()..retainWhere((c) {
@@ -243,7 +224,6 @@ class CampMapRepository {
           return t.contains('국립') || t.contains('지자체');
         });
 
-    // 2) 실시간 예약 현황 반영
     final rtSnap = await _fire.collection('realtime_availability').get();
     final rtMap = {for (var d in rtSnap.docs) d.id: d.data()};
     final key = DateFormat('yyyy-MM-dd').format(selectedDate);
@@ -259,7 +239,6 @@ class CampMapRepository {
               );
         }).toList();
 
-    // 3) 선택 날짜의 날씨(14일 이내만) 주입
     final enriched = await Future.wait(
       merged.map((c) async {
         final w = await _fetchWeatherForDate(c.lat, c.lng, selectedDate);
@@ -275,7 +254,6 @@ class CampMapRepository {
     return enriched;
   }
 
-  /// Open-Meteo 하루 데이터
   Future<Map<String, dynamic>?> _fetchWeatherForDate(
     double lat,
     double lng,
@@ -333,7 +311,6 @@ class CampMapRepository {
   }
 }
 
-/// 평균값 유틸
 double? _avgNum(dynamic a, dynamic b) {
   if (a == null || b == null) return null;
   return ((a as num).toDouble() + (b as num).toDouble()) / 2.0;

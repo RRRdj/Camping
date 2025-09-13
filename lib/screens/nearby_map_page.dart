@@ -31,8 +31,8 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
   final _searchCtrl = TextEditingController();
 
   InAppWebViewController? _web;
-  bool _webReady = false; // WebView 생성 완료 여부
-  bool _pageLoaded = false; // HTML 로드 완료 여부
+  bool _webReady = false;
+  bool _pageLoaded = false;
 
   double? _lat, _lng;
   List<Camp> _camps = [], _filtered = [];
@@ -41,7 +41,6 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
   String? _openCampId;
   bool _detailOpen = false;
 
-  // 페이지 로딩 전 요청된 중심 이동을 저장해두는 버퍼
   double? _pendingCenterLat, _pendingCenterLng;
 
   @override
@@ -69,7 +68,6 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
     });
   }
 
-  /// 위치 권한/예외를 보여주고, JS로 중심만 이동 → 실패 시 전체 재로딩 폴백
   Future<void> _moveToCurrentLocation() async {
     try {
       final pos = await _repo.currentPosition();
@@ -95,11 +93,9 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
     }
   }
 
-  /// JS 함수로 지도 중심만 이동. 성공 시 true
   Future<bool> _centerMapViaJs(double lat, double lng) async {
     if (_web == null || !_webReady) return false;
 
-    // 아직 HTML이 로드되지 않았다면 로드 후 적용
     if (!_pageLoaded) {
       _pendingCenterLat = lat;
       _pendingCenterLng = lng;
@@ -201,7 +197,6 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                             _lat = lat;
                             _lng = lng;
                           });
-                          // 검색으로 이동 시에도 JS 우선 시도
                           _centerMapViaJs(lat, lng).then((ok) {
                             if (!ok) _reload();
                           });
@@ -269,7 +264,7 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                               _suggestions.clear();
                             });
                             _centerMapViaJs(camp.lat, camp.lng).then((ok) {
-                              if (!ok) _search(); // 검색 결과 재로딩 폴백
+                              if (!ok) _search();
                             });
                           },
                         );

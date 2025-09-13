@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../widgets/weather_presenter.dart'; // wmoIcon, wmoKoText, airLine
+import '../widgets/weather_presenter.dart';
 
 class CampingWeatherForecastScreen extends StatefulWidget {
   final double lat;
@@ -73,7 +73,6 @@ class _CampingWeatherForecastScreenState
 
   Future<void> _refreshFromNetwork(String wxUrl, String query) async {
     try {
-      // 날씨
       final wxResp = await http
           .get(Uri.parse(wxUrl))
           .timeout(const Duration(seconds: 8));
@@ -90,7 +89,6 @@ class _CampingWeatherForecastScreenState
       final List prcp =
           (wxBody['daily']?['precipitation_probability_mean'] as List?) ?? [];
 
-      // 공기질(시간별 → 일평균)
       final aqUrl =
           'https://air-quality-api.open-meteo.com/v1/air-quality'
           '?latitude=${widget.lat.toStringAsFixed(4)}'
@@ -111,11 +109,8 @@ class _CampingWeatherForecastScreenState
                   as Map<String, dynamic>;
           aqDailyMap = _aggregateAirQualityDaily(aqBody);
         }
-      } catch (_) {
-        // ignore AQ errors
-      }
+      } catch (_) {}
 
-      // 합치기
       final int n = times.length;
       final List<WeatherDay> parsed = List.generate(n, (i) {
         final String date =
@@ -128,7 +123,7 @@ class _CampingWeatherForecastScreenState
 
         return WeatherDay(
           date: date,
-          condition: wmoKoText(wmo), // from weather_presenter.dart
+          condition: wmoKoText(wmo),
           wmoCode: wmo,
           maxTempC:
               (i < tmax.length && tmax[i] != null)
@@ -209,10 +204,7 @@ class _CampingWeatherForecastScreenState
                   separatorBuilder: (_, __) => const SizedBox(height: 4),
                   itemBuilder: (context, index) {
                     final day = _forecast[index];
-                    final airText = airLine(
-                      day.pm10,
-                      day.pm25,
-                    ); // from weather_presenter.dart
+                    final airText = airLine(day.pm10, day.pm25);
 
                     return Card(
                       margin: const EdgeInsets.symmetric(
@@ -220,10 +212,7 @@ class _CampingWeatherForecastScreenState
                         vertical: 4,
                       ),
                       child: ListTile(
-                        leading: Icon(
-                          wmoIcon(day.wmoCode),
-                          size: 32,
-                        ), // from weather_presenter.dart
+                        leading: Icon(wmoIcon(day.wmoCode), size: 32),
                         title: Text(
                           '${day.date} - ${day.condition ?? "날씨 정보 없음"}',
                         ),
@@ -253,7 +242,6 @@ class _CampingWeatherForecastScreenState
   }
 }
 
-/* ========= 시간별 AQ를 날짜별 평균으로 집계 ========= */
 Map<String, AirDaily> _aggregateAirQualityDaily(Map<String, dynamic> aqBody) {
   final times = (aqBody['hourly']?['time'] as List?) ?? [];
   final pm10 = (aqBody['hourly']?['pm10'] as List?) ?? [];
@@ -303,7 +291,6 @@ class AirDaily {
   AirDaily({this.pm10Mean, this.pm25Mean});
 }
 
-/* ========= 에러 뷰 ========= */
 class _ErrorView extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
@@ -334,16 +321,15 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
-/* ========= 간단 모델 (이 파일 로컬 정의) ========= */
 class WeatherDay {
-  final String date; // yyyy-MM-dd
-  final String? condition; // 한국어 요약 텍스트
+  final String date;
+  final String? condition;
   final int? wmoCode;
   final double? maxTempC;
   final double? minTempC;
   final int? dailyChanceOfRain;
-  final double? pm10; // ㎍/㎥
-  final double? pm25; // ㎍/㎥
+  final double? pm10;
+  final double? pm25;
 
   WeatherDay({
     required this.date,

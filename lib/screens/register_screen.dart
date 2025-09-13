@@ -1,5 +1,3 @@
-// lib/screens/register_screen.dart
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -55,11 +53,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final pw2 = _pwConfirmCtr.text.trim();
     final nick = _nickCtr.text.trim();
 
-    // 이메일 형식 검사
     if (!_util.isValidEmail(email)) {
       return _toast('올바른 이메일을 입력해주세요.');
     }
-    // 비밀번호 일치 검사
     final pwErr = _util.validatePasswordMatch(pw, pw2);
     if (pwErr != null) {
       return _toast(pwErr);
@@ -67,21 +63,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     setState(() => _loading = true);
     try {
-      // 닉네임 중복 확인
       if (await _repo.isNicknameTaken(nick)) {
         return _toast('이미 사용 중인 닉네임입니다.');
       }
 
-      // Auth 가입
       final uid = await _repo.signUp(email: email, pw: pw);
 
-      // 프로필 이미지 업로드 또는 기본 아바타
       final photoUrl =
           _pickedImage != null
               ? await _repo.uploadProfileImage(uid, _pickedImage!)
               : _util.defaultAvatar(uid);
 
-      // Firestore에 사용자 정보 저장
       await _repo.saveUserData(uid, {
         'email': email,
         'name': _nameCtr.text.trim(),
@@ -130,7 +122,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-
                     _buildInput(
                       _emailCtr,
                       '이메일',
@@ -147,7 +138,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     _gap(),
                     _buildInput(_phoneCtr, '전화번호', type: TextInputType.phone),
                     const SizedBox(height: 32),
-
                     ElevatedButton(
                       onPressed: _register,
                       style: ElevatedButton.styleFrom(

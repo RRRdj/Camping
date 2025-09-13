@@ -1,4 +1,3 @@
-/// lib/screens/my_reviews_screen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -65,7 +64,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // 평점
                         Row(
                           children: [
                             const Text('평점:'),
@@ -88,7 +86,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        // 내용
                         TextField(
                           controller: ctrl,
                           minLines: 3,
@@ -99,7 +96,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        // 기존 이미지 편집
                         if (currentUrls.isNotEmpty) ...[
                           const Align(
                             alignment: Alignment.centerLeft,
@@ -155,7 +151,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                           ),
                           const SizedBox(height: 12),
                         ],
-                        // 새로운 이미지 추가
                         Align(
                           alignment: Alignment.centerLeft,
                           child: TextButton.icon(
@@ -233,7 +228,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           ),
     );
 
-    // 교체: _edit 내 result 처리 시작부에 널 가드 추가
     if (result == true) {
       if (contentId == null || contentId.isEmpty) {
         ScaffoldMessenger.of(
@@ -296,7 +290,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 제목 및 별점
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -316,10 +309,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      // 내용
                       Text(m['content'] ?? ''),
                       const SizedBox(height: 8),
-                      // 이미지 썸네일 (Wrap으로 정렬)
                       if (imageUrls.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Wrap(
@@ -356,7 +347,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                         ),
                       ],
                       const SizedBox(height: 12),
-                      // 날짜 및 액션 버튼
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -391,7 +381,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                                   color: Colors.red,
                                 ),
                                 onPressed: () async {
-                                  // 교체: 삭제 확인 다이얼로그 빌더와 pop 컨텍스트
                                   final ok = await showDialog<bool>(
                                     context: ctx,
                                     builder:

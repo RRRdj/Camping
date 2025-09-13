@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/place.dart';
 import '../widgets/place_bookmark_sheet.dart';
 
-/// 장소 검색 + 북마크 관리 + 홈 설정 화면
 class PlaceSearchScreen extends StatefulWidget {
   final void Function(String placeName, double lat, double lng)
   onLocationChange;
@@ -26,7 +25,6 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
   Place? _home;
   bool _isLoading = false;
 
-  // Kakao 좌표→주소 캐시
   final _addrCache = <String, String>{};
 
   Future<String> _getAddress(double lat, double lng) async {
@@ -48,7 +46,6 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
     return '주소 정보 없음';
   }
 
-  /* ───── SharedPreferences ───── */
   Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     _bookmarks =
@@ -89,7 +86,6 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
     await _saveHome(p);
   }
 
-  /* ───── 키워드 검색 ───── */
   Future<void> _searchPlaces(String query) async {
     if (query.isEmpty) {
       setState(() => _suggestions.clear());
@@ -104,7 +100,6 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
 
     if (res.statusCode == 200) {
       final docs = json.decode(res.body)['documents'] as List;
-
       _suggestions = await Future.wait(
         docs.take(5).map((e) async {
           final lat = double.parse(e['y']);
@@ -136,7 +131,6 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
     super.dispose();
   }
 
-  /* ───── 북마크 모달 ───── */
   void _showBookmarkSheet() {
     showModalBottomSheet(
       context: context,
@@ -145,18 +139,16 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
             initialBookmarks: List<Place>.from(_bookmarks),
             initialHome: _home,
             onToggleBookmark: (p) async {
-              await _toggleBookmark(p); // 저장/해제 영속화
+              await _toggleBookmark(p);
             },
             onSetHome: (p) async {
-              await _setAsHome(p); // 홈 설정 영속화
-              // ★ 집 버튼 눌렀을 때만 위치 변경
+              await _setAsHome(p);
               widget.onLocationChange(p.name, p.latitude, p.longitude);
             },
           ),
     );
   }
 
-  /* ───── 메인 UI ───── */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -165,7 +157,6 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 검색창 + 북마크 버튼
             Row(
               children: [
                 Expanded(
@@ -206,8 +197,6 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
               ],
             ),
             const SizedBox(height: 8),
-
-            // 검색 결과 리스트
             if (_suggestions.isNotEmpty)
               Expanded(
                 child: Container(
@@ -235,10 +224,9 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
                           ),
                           onPressed: () async {
                             await _toggleBookmark(place);
-                            setState(() {}); // 리스트의 별 상태 갱신
+                            setState(() {});
                           },
                         ),
-                        // 검색 결과 항목 터치 시 위치 변경(기획 유지)
                         onTap: () {
                           widget.onLocationChange(
                             place.name,

@@ -1,12 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Review {
-  final String id; // userReview 문서 ID
-  final String? contentId; // 캠핑장 contentId
-  final String? campName; // 캠핑장 이름
-  final String? content; // 후기 내용
-  final int? rating; // 평점 1~5
-  final Timestamp? date; // 작성일
+  final String id;
+  final String? contentId;
+  final String? campName;
+  final String? content;
+  final int? rating;
+  final Timestamp? date;
 
   Review({
     required this.id,

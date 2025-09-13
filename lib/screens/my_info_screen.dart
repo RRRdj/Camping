@@ -1,5 +1,3 @@
-// lib/screens/my_info_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -25,20 +23,16 @@ class MyInfoScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           '내 정보',
-          style: TextStyle(
-            fontWeight: FontWeight.bold, // 볼드체 적용
-            fontSize: 20, // 필요 시 크기 조정
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         centerTitle: true,
       ),
-
       body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         future:
             FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const AppLoading(); //
+            return const AppLoading();
           }
           if (snapshot.hasError) {
             return Center(child: Text('오류 발생: ${snapshot.error}'));
@@ -155,7 +149,6 @@ class MyInfoScreen extends StatelessWidget {
                       ),
                 ),
                 const SizedBox(height: 16),
-                /*──────── 회원 탈퇴 ─────────*/
                 _item(
                   context,
                   icon: Icons.delete_forever,
@@ -206,7 +199,7 @@ class MyInfoScreen extends StatelessWidget {
                         const SnackBar(content: Text('회원 탈퇴가 완료되었습니다.')),
                       );
                     } on FirebaseAuthException catch (e) {
-                      Navigator.pop(context); // 로딩 다이얼로그 닫기
+                      Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(e.message ?? '탈퇴 실패')),
                       );
@@ -215,7 +208,6 @@ class MyInfoScreen extends StatelessWidget {
                   iconColor: Colors.red,
                 ),
                 const Divider(height: 32),
-                /*──────── 로그아웃 ─────────*/
                 _item(
                   context,
                   icon: Icons.logout,
@@ -234,7 +226,6 @@ class MyInfoScreen extends StatelessWidget {
     );
   }
 
-  /* 공통 ListTile 위젯 */
   Widget _item(
     BuildContext ctx, {
     required IconData icon,

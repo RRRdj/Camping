@@ -1,4 +1,3 @@
-// lib/screens/camping_reservation_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -42,13 +41,13 @@ class _CampingReservationScreenState extends State<CampingReservationScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('2주일치 예약 현황')),
       body: SafeArea(
-        top: false, // AppBar 위쪽은 그대로 두고
+        top: false,
         child: Padding(
           padding: EdgeInsets.only(
             left: 16,
             right: 16,
             top: 16,
-            bottom: bottomInset, // 시스템 바 위로 콘텐츠가 올라오도록
+            bottom: bottomInset,
           ),
           child: FutureBuilder<Map<String, dynamic>>(
             future: _availabilityFuture,
@@ -58,7 +57,6 @@ class _CampingReservationScreenState extends State<CampingReservationScreen> {
               }
               final data = snapshot.data ?? {};
 
-              // 내일부터 14일치 날짜 리스트
               final today = DateTime.now();
               final start = DateTime(
                 today.year,
@@ -70,7 +68,6 @@ class _CampingReservationScreenState extends State<CampingReservationScreen> {
                 (i) => start.add(Duration(days: i)),
               );
 
-              // 가로 스크롤 + 세로 스크롤을 모두 허용
               return SingleChildScrollView(
                 scrollDirection: Axis.vertical,
                 child: SingleChildScrollView(

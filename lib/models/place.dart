@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-/// 장소 정보 모델
 class Place {
   final String name;
   final double latitude;
@@ -14,7 +13,6 @@ class Place {
     required this.address,
   });
 
-  // 직렬화
   String toJsonString() => jsonEncode({
     'n': name,
     'lat': latitude,
@@ -22,7 +20,6 @@ class Place {
     'addr': address,
   });
 
-  // 역직렬화
   static Place fromJsonString(String s) {
     final m = jsonDecode(s);
     return Place(

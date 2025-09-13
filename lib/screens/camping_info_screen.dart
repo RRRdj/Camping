@@ -1,6 +1,3 @@
-// lib/screens/camping_info_screen.dart
-// ignore_for_file: library_private_types_in_public_api
-
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/services.dart';
@@ -32,7 +29,6 @@ import 'camping_reservation_screen.dart';
 import 'reservation_info_screen.dart';
 import 'camping_weather_forecast_screen.dart';
 
-/* ───────────────── 정렬 타입 ───────────────── */
 enum ReviewSort { newest, ratingHigh, ratingLow }
 
 class CampingInfoScreen extends StatefulWidget {
@@ -68,25 +64,20 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
   late Future<List<String>> _imagesFuture;
   late bool _bookmarked;
 
-  // 리뷰 입력
   final _txtCtr = TextEditingController();
   int _rating = 5;
 
-  // 메모
   final _memoCtr = TextEditingController();
   String _memoText = '';
   String? _contentId;
   String? _userNickname;
 
-  // 리뷰 필터 상태
   ReviewSort _reviewSort = ReviewSort.newest;
   bool _photoOnly = false;
 
-  // ───────────── 날씨 ─────────────
   static final Map<String, Map<String, dynamic>?> _weatherCache = {};
   Future<Map<String, dynamic>?>? _weatherFuture;
 
-  /*──────────────── 메모 로드 ────────────────*/
   Future<void> _loadSavedMemo() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || _contentId == null || _contentId!.isEmpty) return;
@@ -104,7 +95,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     }
   }
 
-  /*──────────────── initState ────────────────*/
   @override
   void initState() {
     super.initState();
@@ -121,7 +111,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
       return _service.fetchImages(cid, firstUrl);
     });
 
-    // 초기 날씨 Future 설정
     _weatherFuture = _campFuture.then((doc) {
       final c = doc.data()!;
       final lat = double.tryParse((c['mapY'] as String?) ?? '') ?? 0.0;
@@ -135,7 +124,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
   @override
   void didUpdateWidget(covariant CampingInfoScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // 날짜나 캠핑장이 바뀌면 날씨 갱신
     if (oldWidget.selectedDate != widget.selectedDate ||
         oldWidget.campName != widget.campName) {
       _weatherFuture = _campFuture.then((doc) {
@@ -162,7 +150,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     setState(() => _userNickname = nick);
   }
 
-  /*──────────────── 메모 편집 다이얼로그 ────────────────*/
   Future<void> _showEditDialog() async {
     _memoCtr.text = _memoText;
     final result = await showDialog<String>(
@@ -211,7 +198,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     _showMsg('메모가 저장되었습니다.');
   }
 
-  /*──────────────── 알림 설정 ────────────────*/
   Future<void> _onTapAlarm() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return _showMsg('로그인 후 이용해주세요.');
@@ -233,13 +219,12 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
       initialDate: DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 30)),
-      locale: const Locale('ko'), // ① 다이얼로그 자체 로케일 지정
-      helpText: '날짜 선택', // ② 텍스트도 한국어로
+      locale: const Locale('ko'),
+      helpText: '날짜 선택',
       cancelText: '취소',
       confirmText: '확인',
       builder:
-          (context, child) => // ③ 이 컨텍스트만 한국어로 강제
-              Localizations.override(
+          (context, child) => Localizations.override(
             context: context,
             locale: const Locale('ko'),
             child: child,
@@ -256,7 +241,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     _showMsg('${DateFormat('M월 d일').format(selectedDate)} 알림이 설정되었습니다.');
   }
 
-  /*──────────────── 이미지 선택 ────────────────*/
   Future<void> _pickImages() async {
     final images = await _picker.pickMultiImage();
     if (images != null && images.isNotEmpty) {
@@ -264,7 +248,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     }
   }
 
-  /*──────────────── 리뷰 등록 ────────────────*/
   Future<void> _submitReview() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return _showMsg('로그인 후 이용 가능합니다.');
@@ -291,7 +274,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // ───────────── Open-Meteo 하루치 날씨(홈과 동일 로직) ─────────────
   Future<Map<String, dynamic>?> fetchWeatherForDate(
     double lat,
     double lng,
@@ -302,7 +284,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     final today = just(DateTime.now());
     final diffDays = d.difference(today).inDays;
 
-    if (diffDays < 0 || diffDays > 13) return null; // 과거/14일 이후 제외
+    if (diffDays < 0 || diffDays > 13) return null;
 
     final dateStr = DateFormat('yyyy-MM-dd').format(d);
     final cacheKey =
@@ -354,7 +336,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     }
   }
 
-  /*──────────────────────────────────────────*/
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
@@ -373,7 +354,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
               return const Center(child: Text('캠핑장 정보를 불러올 수 없습니다.'));
             }
 
-            // Firestore 데이터
             final c = snap.data!.data()!;
             final isAvail = widget.available > 0;
             final amenities =
@@ -388,7 +368,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
 
             return CustomScrollView(
               slivers: [
-                /*──────── SliverAppBar + 이미지 페이저 ────────*/
                 SliverAppBar(
                   pinned: true,
                   expandedHeight: 250,
@@ -411,13 +390,10 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                     ),
                   ),
                 ),
-
-                /*──────── 본문 ────────*/
                 SliverPadding(
                   padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset + 12),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      /* 캠핑장명 + (실시간 평균 별점) + 공유 + 북마크 */
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -427,7 +403,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                               runSpacing: 4,
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
-                                // 캠핑장 이름 (줄바꿈 허용, 생략 없음)
                                 Text(
                                   name,
                                   style: const TextStyle(
@@ -436,7 +411,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                                   ),
                                   softWrap: true,
                                 ),
-                                // ⭐ 실시간 평균 별점 배지
                                 if ((_contentId ?? '').isNotEmpty)
                                   _LiveAverageRatingBadge(
                                     contentId: _contentId!,
@@ -473,8 +447,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
-
-                      /* 예약 가능 상태 */
                       Text(
                         '$dateLabel ${isAvail ? '예약 가능' : '예약 마감'} '
                         '(${widget.available}/${widget.total})',
@@ -485,7 +457,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-
                       FutureBuilder<Map<String, dynamic>?>(
                         future: _weatherFuture,
                         builder: (context, wsnap) {
@@ -544,10 +515,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                           );
                         },
                       ),
-
                       const SizedBox(height: 12),
-
-                      /* ─── 예약/정보/알림 버튼 묶음 ─── */
                       ReservationActionButtons(
                         onSchedule:
                             () => Navigator.push(
@@ -575,18 +543,11 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                             ),
                         onAlarm: _onTapAlarm,
                       ),
-
-                      /* 메모 */
                       const SizedBox(height: 24),
                       MemoBox(memoText: _memoText, onEdit: _showEditDialog),
                       const SizedBox(height: 24),
-
-                      /* ─── 관련 사이트 버튼 ─── */
                       SiteButton(siteUrl: c['site'] as String?),
-
                       const Divider(height: 32),
-
-                      /* 정보 행들 */
                       Row(
                         children: [
                           Expanded(
@@ -609,11 +570,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-
-                      /* 카카오 지도 위젯 */
                       KakaoMapView(lat: latitude, lng: longitude),
                       const SizedBox(height: 12),
-
                       Row(
                         children: [
                           Expanded(
@@ -643,7 +601,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         ],
                       ),
                       const Divider(height: 32),
-
                       InfoRow(
                         label: '캠핑장 유형',
                         value: c['type'] ?? '정보없음',
@@ -666,8 +623,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                       const Divider(height: 32),
                       AmenitySection(amenities: amenities),
                       const Divider(height: 32),
-
-                      /* 상세 정보 섹션 */
                       const Text(
                         '기본 정보',
                         style: TextStyle(
@@ -682,8 +637,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         featureNm: c['featureNm'],
                       ),
                       const Divider(height: 32),
-
-                      /* ───────── 리뷰 작성 폼 ───────── */
                       ReviewForm(
                         txtCtr: _txtCtr,
                         rating: _rating,
@@ -696,10 +649,7 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                         },
                         onSubmit: _submitReview,
                       ),
-
                       const Divider(height: 24),
-
-                      /* ───────── 리뷰 필터 바 + 목록 (필터 반영) ───────── */
                       if ((_contentId ?? '').isNotEmpty) ...[
                         _ReviewFilterBar(
                           sort: _reviewSort,
@@ -736,7 +686,6 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
   }
 }
 
-/* ======================= ⭐ 실시간 평균 별점 배지 위젯 ==================== */
 class _LiveAverageRatingBadge extends StatelessWidget {
   final String contentId;
   const _LiveAverageRatingBadge({required this.contentId});
@@ -772,7 +721,7 @@ class _LiveAverageRatingBadge extends StatelessWidget {
         if (cnt == 0) return const SizedBox.shrink();
 
         final avg = (sum / cnt);
-        final avgText = avg.toStringAsFixed(1); // 소수점 첫째자리
+        final avgText = avg.toStringAsFixed(1);
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -801,7 +750,6 @@ class _LiveAverageRatingBadge extends StatelessWidget {
   }
 }
 
-/* ======================= 리뷰 필터 바 ==================== */
 class _ReviewFilterBar extends StatelessWidget {
   final ReviewSort sort;
   final bool photoOnly;
@@ -854,7 +802,6 @@ class _ReviewFilterBar extends StatelessWidget {
   }
 }
 
-/* ======================= 필터 적용 리뷰 목록 (총 개수 표시 포함) ==================== */
 class _FilteredReviewList extends StatelessWidget {
   final String contentId;
   final ReviewSort sort;
@@ -1091,7 +1038,6 @@ class _FilteredReviewList extends StatelessWidget {
     );
   }
 
-  /* ───── 편집 / 삭제 / 신고 다이얼로그 및 동작 ───── */
   Future<void> _showEditDialog(
     BuildContext context, {
     required String reviewId,

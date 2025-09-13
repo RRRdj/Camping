@@ -97,7 +97,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     });
   }
 
-  // ======================= 유틸(거리) ===================================
   double _deg2rad(double d) => d * (math.pi / 180);
   double _distanceKm(double lat1, double lon1, double lat2, double lon2) {
     const r = 6371.0;
@@ -119,9 +118,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     if (lat == null || lon == null) return double.infinity;
     return _distanceKm(_userLat, _userLng, lat, lon);
   }
-  // =====================================================================
 
-  // ======================= Open-Meteo (하루 데이터) ======================
   Future<Map<String, dynamic>?> fetchWeatherForDate(
     double lat,
     double lng,
@@ -132,7 +129,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     final today = just(DateTime.now());
     final diffDays = d.difference(today).inDays;
 
-    // 과거 또는 14일 범위 밖이면 숨김
     if (diffDays < 0 || diffDays > 13) return null;
 
     final dateStr = DateFormat('yyyy-MM-dd').format(d);
@@ -184,16 +180,13 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
       return null;
     }
   }
-  // =====================================================================
 
-  // ======================= 평균 별점 로더 (캐시 활용) ====================
   Future<Map<String, double?>> _loadAvgRatingsFor(
     List<Map<String, dynamic>> camps,
   ) async {
     final Map<String, double?> result = {};
     final ids = <String>[];
 
-    // 1) 캐시 먼저 반영하고, 캐시 없는 contentId만 수집
     for (final c in camps) {
       final id = c['contentId']?.toString() ?? '';
       if (id.isEmpty) {
@@ -208,8 +201,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     }
     if (ids.isEmpty) return result;
 
-    // 2) 병렬 청크 처리 (너무 많은 동시요청 방지)
-    const chunkSize = 10; // 상황에 맞게 8~12 권장
+    const chunkSize = 10;
     for (var i = 0; i < ids.length; i += chunkSize) {
       final chunk = ids.sublist(i, math.min(i + chunkSize, ids.length));
       await Future.wait(
@@ -245,114 +237,95 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     return result;
   }
 
-  // =====================================================================
-
-  // ======================= 필터 Drawer ==================================
   Widget _buildFilterDrawer(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
     return Drawer(
       width: 320,
+      backgroundColor: cs.surface,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 상단 고정 바
             Container(
               height: 56,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+                border: Border(bottom: BorderSide(color: cs.outlineVariant)),
               ),
               child: Row(
                 children: [
-                  const Text(
+                  Text(
                     '검색 필터',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: cs.onSurface,
+                    ),
                   ),
                   const Spacer(),
-
-                  // 공통 색 정의: 아이콘과 동일 계열(Colors.teal = #009688)
-                  // 필요시 정확히 고정하고 싶으면 const kIconTeal = Color(0xFF009688);
-                  // 로 선언해서 써도 됩니다.
-                  Builder(
-                    builder: (context) {
-                      final Color kIconTeal = Colors.teal; // 아이콘과 같은 색
-                      final Color resetBg = kIconTeal.withOpacity(
-                        0.18,
-                      ); // 연한 청록 (초기화)
-                      final Color applyBg = kIconTeal.withOpacity(
-                        0.32,
-                      ); // 조금 진한 청록 (적용)
-                      final BorderRadius br = BorderRadius.circular(12);
-
-                      return Row(
-                        children: [
-                          // 초기화
-                          TextButton(
-                            style: TextButton.styleFrom(
-                              backgroundColor: resetBg,
-                              foregroundColor: Colors.black87, // 글자색
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: br,
-                                side: BorderSide(
-                                  color: kIconTeal.withOpacity(0.35),
-                                ),
-                              ),
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _filterKeyword = null;
-                                _filterRegion.clear();
-                                _filterType.clear();
-                                _filterDuty.clear();
-                                _filterEnv.clear();
-                                _filterAmenity.clear();
-                              });
-                            },
-                            child: const Text('초기화'),
+                  Row(
+                    children: [
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          backgroundColor: cs.surfaceVariant,
+                          foregroundColor: cs.onSurface,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
                           ),
-                          const SizedBox(width: 8),
-
-                          // 적용
-                          TextButton(
-                            style: TextButton.styleFrom(
-                              backgroundColor: applyBg,
-                              foregroundColor: Colors.black87,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: br,
-                                side: BorderSide(
-                                  color: kIconTeal.withOpacity(0.35),
-                                ),
-                              ),
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _appliedKeyword = _filterKeyword;
-                                _appliedRegion = List.from(_filterRegion);
-                                _appliedType = List.from(_filterType);
-                                _appliedDuty = List.from(_filterDuty);
-                                _appliedEnv = List.from(_filterEnv);
-                                _appliedAmenity = List.from(_filterAmenity);
-                              });
-                              Navigator.pop(context);
-                            },
-                            child: const Text('적용'),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: cs.outlineVariant),
                           ),
-                        ],
-                      );
-                    },
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _filterKeyword = null;
+                            _filterRegion.clear();
+                            _filterType.clear();
+                            _filterDuty.clear();
+                            _filterEnv.clear();
+                            _filterAmenity.clear();
+                          });
+                        },
+                        child: const Text('초기화'),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          backgroundColor: cs.primaryContainer,
+                          foregroundColor: cs.onPrimaryContainer,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: cs.primary.withOpacity(0.35),
+                            ),
+                          ),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _appliedKeyword = _filterKeyword;
+                            _appliedRegion = List.from(_filterRegion);
+                            _appliedType = List.from(_filterType);
+                            _appliedDuty = List.from(_filterDuty);
+                            _appliedEnv = List.from(_filterEnv);
+                            _appliedAmenity = List.from(_filterAmenity);
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: const Text('적용'),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            // 옵션들 스크롤
             Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(
@@ -473,32 +446,50 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     required List<String> selected,
     required void Function(String) onToggle,
   }) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(
+          title,
+          style: TextStyle(fontWeight: FontWeight.w600, color: cs.onSurface),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children:
-              options
-                  .map(
-                    (opt) => ChoiceChip(
-                      label: Text(opt),
-                      selected: selected.contains(opt),
-                      onSelected: (_) => onToggle(opt),
-                      selectedColor: Colors.teal.shade100,
-                      backgroundColor: Colors.grey.shade200,
+              options.map((opt) {
+                final isSelected = selected.contains(opt);
+                return ChoiceChip(
+                  label: Text(
+                    opt,
+                    style: TextStyle(
+                      color: isSelected ? cs.onPrimaryContainer : cs.onSurface,
                     ),
-                  )
-                  .toList(),
+                  ),
+                  selected: isSelected,
+                  onSelected: (_) => onToggle(opt),
+                  backgroundColor: cs.surfaceVariant,
+                  selectedColor: cs.primaryContainer,
+                  side: BorderSide(
+                    color:
+                        isSelected
+                            ? cs.primary.withOpacity(0.50)
+                            : cs.outlineVariant,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                );
+              }).toList(),
         ),
         const SizedBox(height: 16),
       ],
     );
   }
-  // =====================================================================
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -523,17 +514,15 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
       appBar: AppBar(
         title: Text(
           '[ $dateLabel 캠핑장 현황 ]',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700, // 또는 FontWeight.bold
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
         centerTitle: true,
-
         backgroundColor: cs.surfaceContainerHigh,
         foregroundColor: cs.onSurface,
         elevation: 0,
         scrolledUnderElevation: 0,
-
         actions: [
           IconButton(
             icon: const Icon(Icons.tune),
@@ -553,21 +542,36 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
       ),
       body: Column(
         children: [
-          // 검색 + 날짜
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
+                    cursorColor: cs.primary,
+                    style: TextStyle(color: cs.onSurface),
                     decoration: InputDecoration(
                       hintText: '검색어를 입력하세요',
-                      prefixIcon: const Icon(Icons.search),
+                      hintStyle: TextStyle(
+                        color: cs.onSurface.withOpacity(0.6),
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: cs.onSurfaceVariant,
+                      ),
                       filled: true,
-                      fillColor: Colors.grey.shade100,
-                      border: OutlineInputBorder(
+                      fillColor: cs.surfaceVariant,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
+                        borderSide: BorderSide(color: cs.outlineVariant),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide(color: cs.primary, width: 1.4),
                       ),
                     ),
                     onChanged: (v) => setState(() => _appliedKeyword = v),
@@ -580,21 +584,20 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.teal,
+                      color: cs.primary,
                       borderRadius: BorderRadius.circular(12),
+                      boxShadow: kElevationToShadow[1],
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.calendar_today,
-                      color: Colors.white,
-                      size: 24,
+                      color: cs.onPrimary,
+                      size: 22,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-
-          // 실시간 데이터(캠핑장 + 예약현황)
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream:
@@ -620,14 +623,12 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                       return const Center(child: CircularProgressIndicator());
                     }
 
-                    // id: 캠핑장 이름으로 문서가 있다고 가정
                     final availabilityMap = <String, Map<String, dynamic>>{};
                     for (var doc in availSnap.data!.docs) {
                       availabilityMap[doc.id] =
                           doc.data()! as Map<String, dynamic>;
                     }
 
-                    // 필터링
                     final filtered =
                         camps.where((c) {
                           final name = (c['name'] as String).toLowerCase();
@@ -676,12 +677,10 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                           return true;
                         }).toList();
 
-                    // 1) 기본 정렬: 거리
                     filtered.sort(
                       (a, b) => _campDistance(a).compareTo(_campDistance(b)),
                     );
 
-                    // 2) 정렬 전 리스트에 "기본 순서 인덱스" 부여 (정렬 안정성 확보)
                     final baseItems = List.generate(filtered.length, (i) {
                       return {'camp': filtered[i], 'baseIdx': i};
                     });
@@ -691,7 +690,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 개수 + 현위치 + "예약가능만" 토글 + 정렬
                         Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -719,10 +717,9 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                           horizontal: 6,
                                           vertical: 0,
                                         ),
-                                        minimumSize: Size.zero, // 최소 사이즈 제거
+                                        minimumSize: Size.zero,
                                         tapTargetSize:
-                                            MaterialTapTargetSize
-                                                .shrinkWrap, // 터치 영역 최소화
+                                            MaterialTapTargetSize.shrinkWrap,
                                       ),
                                       onPressed: () {
                                         Navigator.push(
@@ -744,7 +741,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                   ],
                                 ],
                               ),
-
                               const SizedBox(height: 4),
                               CheckboxListTile(
                                 contentPadding: EdgeInsets.zero,
@@ -786,11 +782,12 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                   });
                                 },
                                 style: SegmentedButton.styleFrom(
-                                  selectedBackgroundColor: Colors.teal
-                                      .withOpacity(0.12),
-                                  selectedForegroundColor: Colors.teal.shade800,
-                                  backgroundColor: Colors.grey.shade100,
-                                  side: BorderSide(color: Colors.grey.shade300),
+                                  selectedBackgroundColor: cs.primaryContainer,
+                                  selectedForegroundColor:
+                                      cs.onPrimaryContainer,
+                                  backgroundColor: cs.surfaceVariant,
+                                  foregroundColor: cs.onSurface,
+                                  side: BorderSide(color: cs.outlineVariant),
                                   shape: const StadiumBorder(),
                                 ),
                                 showSelectedIcon: false,
@@ -799,22 +796,18 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                             ],
                           ),
                         ),
-
-                        // 결과 리스트 (별점 정렬 필요 시 평균값 로딩 후 정렬)
                         Expanded(
                           child:
                               (_ratingSort == RatingSort.none)
-                                  // 정렬 없음: 바로 렌더
                                   ? _buildListView(
                                     baseItems,
                                     availabilityMap,
                                     dateKey,
                                   )
-                                  // 정렬 있음: 평균 별점 로딩 후 정렬해서 렌더
                                   : FutureBuilder<Map<String, double?>>(
                                     future: _loadAvgRatingsFor(
                                       baseItems
-                                          .take(10) // 보이는 개수로 제한
+                                          .take(10)
                                           .map(
                                             (e) =>
                                                 e['camp']
@@ -822,7 +815,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                           )
                                           .toList(),
                                     ),
-
                                     builder: (context, ratingSnap) {
                                       if (!ratingSnap.hasData) {
                                         return const Center(
@@ -835,10 +827,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                             baseItems,
                                           );
 
-                                      // 정렬 규칙:
-                                      //  - 별점 존재 캠핑장이 앞 (높은순/낮은순)
-                                      //  - 별점 없는 캠핑장은 항상 맨 뒤
-                                      //  - 동률/없음일 때는 baseIdx(거리 정렬 결과)를 보조 키로 사용
                                       int cmp(
                                         Map<String, dynamic> a,
                                         Map<String, dynamic> b,
@@ -867,15 +855,13 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                             if (diff.abs() > 1e-9)
                                               return diff.sign.toInt();
                                           }
-                                          // 별점이 동일하면 baseIdx로
                                           return (a['baseIdx'] as int)
                                               .compareTo(b['baseIdx'] as int);
                                         } else if (hasA && !hasB) {
-                                          return -1; // A 먼저
+                                          return -1;
                                         } else if (!hasA && hasB) {
-                                          return 1; // B 먼저
+                                          return 1;
                                         } else {
-                                          // 둘 다 없음 -> baseIdx
                                           return (a['baseIdx'] as int)
                                               .compareTo(b['baseIdx'] as int);
                                         }
@@ -942,7 +928,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
           builder: (context, snapshot) {
             final weather = snapshot.data;
 
-            // 날씨 텍스트 미리 조합
             final String weatherText =
                 (weather == null)
                     ? ''
@@ -998,7 +983,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // 이름 + 평균별점 배지 (긴 이름 대응: Wrap)
                               Wrap(
                                 spacing: 6,
                                 runSpacing: 4,
@@ -1028,8 +1012,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-
-                              // ✅ 1줄: 거리 (왼쪽 정렬)
                               Align(
                                 alignment: Alignment.centerLeft,
                                 child: Text(
@@ -1040,8 +1022,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                   ),
                                 ),
                               ),
-
-                              // ✅ 2줄: 날씨 (아래 줄, 아이콘 + 말줄임)
                               if (weather != null) ...[
                                 const SizedBox(height: 2),
                                 Row(
@@ -1061,7 +1041,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                                   ],
                                 ),
                               ],
-
                               const SizedBox(height: 6),
                               Text(
                                 isAvail
@@ -1100,10 +1079,9 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   }
 }
 
-// ======================= ⭐ 실시간 평균 별점 배지 위젯 ====================
 class _LiveAverageRatingBadge extends StatelessWidget {
   final String contentId;
-  final bool dense; // 홈 리스트에서 더 컴팩트하게 보이도록
+  final bool dense;
 
   const _LiveAverageRatingBadge({required this.contentId, this.dense = false});
 
@@ -1122,7 +1100,7 @@ class _LiveAverageRatingBadge extends StatelessWidget {
         }
         final docs = snap.data!.docs;
         if (docs.isEmpty) {
-          return const SizedBox.shrink(); // 리뷰 없으면 표시 안 함
+          return const SizedBox.shrink();
         }
 
         double sum = 0;
@@ -1172,7 +1150,6 @@ class _LiveAverageRatingBadge extends StatelessWidget {
   }
 }
 
-// ======================= 헬퍼 (날씨 텍스트/아이콘/평균) ====================
 double? _avgNum(dynamic a, dynamic b) {
   if (a == null || b == null) return null;
   return ((a as num).toDouble() + (b as num).toDouble()) / 2.0;

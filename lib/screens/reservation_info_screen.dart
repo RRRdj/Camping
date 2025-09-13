@@ -1,5 +1,3 @@
-// lib/screens/reservation_info_screen.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -18,12 +16,11 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
 
   String _campName = '캠핑장';
   String _contentId = '없음';
-  String _campType = ''; // API에서 받은 campType
-  late bool _isNational; // campType.contains('국립') 판별
+  String _campType = '';
+  late bool _isNational;
   String _reservationWarning = '로딩 중...';
 
   static const _nationalDocId = 'national_login';
-  // 국립 캠핑장 전용으로 고정된 문서 ID
 
   @override
   void initState() {
@@ -51,7 +48,6 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
     });
   }
 
-  /// 로그인 정보 불러오기 (국립은 고정 doc, 지자체는 contentId 기반)
   Future<void> _loadSavedReservationInfo() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -84,7 +80,6 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
     }
   }
 
-  /// 추가 메모 불러오기 (변경 없음)
   Future<void> _loadSavedMemo() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -104,7 +99,6 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
     }
   }
 
-  /// 예약 시 주의사항 불러오기 (변경 없음)
   Future<void> _loadReservationWarning() async {
     try {
       final doc =
@@ -154,8 +148,6 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
               style: const TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 24),
-
-            // 🔐 로그인 정보
             const Text(
               '🔐 로그인 정보',
               style: TextStyle(fontWeight: FontWeight.bold),
@@ -178,7 +170,6 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
                 border: OutlineInputBorder(),
               ),
             ),
-
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
@@ -207,7 +198,6 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
                       .doc(user.uid);
 
                   if (_isNational) {
-                    // 국립 캠핑장: 항상 같은 문서에 저장
                     await base
                         .collection('reservation_national')
                         .doc(_nationalDocId)
@@ -218,7 +208,6 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
                           'savedAt': now,
                         });
                   } else {
-                    // 지자체 캠핑장: contentId로 구분
                     await base
                         .collection('reservation_info')
                         .doc(_contentId)
@@ -238,9 +227,7 @@ class _ReservationInfoScreenState extends State<ReservationInfoScreen> {
                 child: const Text('저장'),
               ),
             ),
-
             const Divider(height: 32),
-
             const Text(
               '⚠️ 예약 시 주의사항',
               style: TextStyle(fontWeight: FontWeight.bold),
