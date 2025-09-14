@@ -45,8 +45,8 @@ class Camp {
       name: m['name'] as String? ?? '',
       region: m['addr1'] as String? ?? '',
       type: m['type'] as String? ?? '',
-      lat: double.tryParse(m['mapY']?.toString() ?? '') ?? 0.0,
-      lng: double.tryParse(m['mapX']?.toString() ?? '') ?? 0.0,
+      lat: double.tryParse(m['mapY']?.toString() ?? '') ?? 0.0, // mapY = lat
+      lng: double.tryParse(m['mapX']?.toString() ?? '') ?? 0.0, // mapX = lng
       available: (m['available'] ?? 0) as int,
       total: (m['total'] ?? 0) as int,
     );
@@ -82,6 +82,10 @@ class Camp {
     final col = ok ? '#2ecc71' : '#e74c3c';
     final tag = ok ? '예약가능' : '마감';
 
+    // 좌표를 고정 소수로 문자열화 (파싱 안전)
+    final latStr = lat.toStringAsFixed(6);
+    final lngStr = lng.toStringAsFixed(6);
+
     String weatherLine = '';
     if (avgTemp != null || chanceOfRain != null || wmoCode != null) {
       final wt = _wmoKoText(wmoCode);
@@ -112,14 +116,14 @@ class Camp {
   </span>
 
   <div style="display:flex; gap:4px;">
-    <button style="flex:1; padding:6px; border:none; background:#007aff; color:#fff;
+    <button type="button" style="flex:1; padding:6px; border:none; background:#007aff; color:#fff;
                    border-radius:4px; font-size:11px; cursor:pointer;"
-            onclick="window.flutter_inappwebview.callHandler('detail','$contentId')">
+            onclick="window.flutter_inappwebview.callHandler('detail','$contentId'); return false;">
       상세정보
     </button>
-    <button style="flex:1; padding:6px; border:none; background:#555; color:#fff;
+    <button type="button" style="flex:1; padding:6px; border:none; background:#555; color:#fff;
                    border-radius:4px; font-size:11px; cursor:pointer;"
-            onclick="openRoadviewAt($lat,$lng)">
+            onclick="openRoadviewAt($latStr,$lngStr); return false;">
       로드뷰
     </button>
   </div>
@@ -130,7 +134,7 @@ class Camp {
 
     return """
 (function(){
-  var pos = new kakao.maps.LatLng($lat, $lng);
+  var pos = new kakao.maps.LatLng($latStr, $lngStr);
   var marker = new kakao.maps.Marker({
     position: pos,
     image: new kakao.maps.MarkerImage(

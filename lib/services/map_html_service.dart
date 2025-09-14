@@ -29,9 +29,6 @@ class MapHtmlService {
   }) {
     final markersJs = StringBuffer();
 
-    // 🔸 기존에는 "현재 위치 마커 1회 추가" JS를 여기서 넣었으나,
-    //     이제는 전역 currMarker로 관리하므로 중복 추가하지 않음.
-
     // 캠핑장 마커 (Camp.toMarkerJs가 InfoWindow/JS 핸들(detail) 호출 포함)
     for (final camp in camps) {
       markersJs.writeln(camp.toMarkerJs(date));
@@ -56,34 +53,23 @@ class MapHtmlService {
     #roadview{display:none;flex:0 0 0;height:0;overflow:hidden;transition:.3s;}
     #container.view_roadview #mapWrapper{flex:0 0 50%;}
     #container.view_roadview #roadview{display:block;flex:0 0 50%;height:50%;}
-
     #roadviewControl{
       position:absolute;top:10px;left:10px;z-index:7;
       background:#fff;border:1px solid #ccc;border-radius:4px;
-      padding:6px 12px;
-      font-size:14px;
-      cursor:pointer;
+      padding:6px 12px;font-size:14px;cursor:pointer;
       box-shadow:0 1px 3px rgba(0,0,0,.08);
     }
     #roadviewControl.active{background:#007aff;color:#fff;}
-
     #rvClose{
       display:none;position:absolute;top:10px;right:10px;z-index:7;
       width:28px;height:28px;border:1px solid #ccc;border-radius:50%;
       background:#fff;font-size:16px;line-height:26px;text-align:center;cursor:pointer;
     }
     #container.view_roadview #rvClose{display:block;}
-
-    .camp-iw{
-      padding:6px 8px;
-      font-size:12px;
-      line-height:1.35;
-      color:#111;
-      max-width:220px;
-    }
-    .camp-iw h4{ margin:0 0 4px 0;font-size:13px;font-weight:700; }
-    .camp-iw .sub{ color:#666;font-size:11px; }
-    .camp-iw .row{ margin-top:6px; }
+    .camp-iw{padding:6px 8px;font-size:12px;line-height:1.35;color:#111;max-width:220px;}
+    .camp-iw h4{margin:0 0 4px 0;font-size:13px;font-weight:700;}
+    .camp-iw .sub{color:#666;font-size:11px;}
+    .camp-iw .row{margin-top:6px;}
     .camp-iw .btn{
       display:inline-block;margin-top:8px;padding:6px 10px;border-radius:6px;
       background:#1976d2;color:#fff;text-decoration:none;font-size:12px;
@@ -131,13 +117,16 @@ class MapHtmlService {
 </div>
 
 <script>
-  // InfoWindow 한 개만 열리도록 관리
+  // InfoWindow 한 개만 열리도록 관리 + 마지막 좌표 저장
   const infoWindows = [];
+  window.__lastMarkerPos = null;
+
   function openSingleInfo(infoWindow, marker){
     infoWindows.forEach(iw => iw.close());
     infoWindows.length = 0;
     infoWindow.open(map, marker);
     infoWindows.push(infoWindow);
+    try { window.__lastMarkerPos = marker.getPosition(); } catch(e) { window.__lastMarkerPos = null; }
   }
 
   // 인포윈도우 내용 감싸기
@@ -211,7 +200,7 @@ class MapHtmlService {
     infoWindows.forEach(function(iw){ iw.close(); }); infoWindows.length=0;
   });
 
-  // ✅ Dart에서 호출할 지도 중심 이동 함수 (현재 위치 마커도 함께 이동)
+  // ✅ Dart에서 호출할 지도 중심 이동 (현재 위치 마커도 함께 이동)
   window.__centerMap = function(lat, lng){
     try{
       const pos = new kakao.maps.LatLng(lat, lng);
@@ -225,6 +214,68 @@ class MapHtmlService {
 
   // 캠핑장 마커들 추가
   $markersJs
+
+  // ─────────────────────────────────────────
+  // ✅ Dart에서 호출할 로드뷰 브리지들
+  window.__toggleRoadView = function(on){
+    try{
+      if(on){
+        if(!overlayOn){
+          overlayOn = true;
+          button.classList.add('active');
+          map.addOverlayMapTypeId(kakao.maps.MapTypeId.ROADVIEW);
+          rvMarker.setMap(map);
+          container.classList.add('view_roadview');
+        }
+        // ON 상태에서 한 번은 진입 시도
+        moveTo(map.getCenter());
+      } else {
+        closeRoadview();
+      }
+      return true;
+    }catch(e){ return false; }
+  };
+
+  window.__openRoadView = function(lat, lng){
+    try{
+      // 1) UI/레이어를 로드뷰 ON 상태로
+      window.__toggleRoadView(true);
+
+      // 2) 좌표로 이동 + 로드뷰 진입
+      var pos = new kakao.maps.LatLng(lat, lng);
+      if (rvMarker) rvMarker.setPosition(pos);
+      moveTo(pos);
+
+      // 3) 지도 중심/현재위치 마커도 맞춰주기 (옵션)
+      if (typeof window.__centerMap === 'function') {
+        try { window.__centerMap(lat, lng); } catch(e){}
+      }
+      return true;
+    }catch(e){ return false; }
+  };
+
+  // 호환용 별칭
+  window.__enterRoadView = window.__openRoadView;
+
+  // 🔁 인포윈도우 버튼이 호출하는 이름과 정확히 일치시키는 별칭
+  //    (콘솔 에러: openRoadviewAt is not defined 대응)
+  window.openRoadviewAt = function(lat, lng){
+    try{
+      // 좌표 미전달 시 마지막 마커좌표 → 없으면 지도 중심
+      if (typeof lat !== 'number' || typeof lng !== 'number') {
+        var pos = window.__lastMarkerPos || map.getCenter();
+        var la = (typeof pos.getLat === 'function') ? pos.getLat() : pos.lat;
+        var ln = (typeof pos.getLng === 'function') ? pos.getLng() : pos.lng;
+        return (typeof window.__openRoadView === 'function')
+          ? window.__openRoadView(la, ln)
+          : false;
+      }
+      return (typeof window.__openRoadView === 'function')
+        ? window.__openRoadView(lat, lng)
+        : false;
+    } catch(e){ return false; }
+  };
+  // ─────────────────────────────────────────
 </script>
 ''';
 }

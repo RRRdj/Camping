@@ -112,6 +112,44 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
     }
   }
 
+  // ─────────────────────────────────────────────
+  // NEW: 상세창에서 'roadview' 요청 시 로드뷰 열기 헬퍼
+  // Web 쪽 구현에 따라 여러 함수명을 순차적으로 시도한다.
+  Future<bool> _openRoadViewAt(double lat, double lng) async {
+    if (_web == null || !_webReady) return false;
+    try {
+      final result = await _web!.evaluateJavascript(
+        source: '''
+        (function(){
+          // 가장 명시적인 함수부터 시도
+          if (window.__openRoadView) {
+            try { return !!window.__openRoadView($lat, $lng); } catch(e) {}
+          }
+          // 로드뷰 토글러가 있는 경우
+          if (window.__centerMap) {
+            try { window.__centerMap($lat, $lng); } catch(e) {}
+          }
+          if (window.__toggleRoadView) {
+            try {
+              var r = window.__toggleRoadView(true);
+              return r === true || r === 'true';
+            } catch(e) {}
+          }
+          // 대체 진입 함수
+          if (window.__enterRoadView) {
+            try { return !!window.__enterRoadView($lat, $lng); } catch(e) {}
+          }
+          return false;
+        })();
+      ''',
+      );
+      return result == true || result == 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+  // ─────────────────────────────────────────────
+
   void _search() {
     final q = _searchCtrl.text.trim().toLowerCase();
     setState(() {
@@ -310,7 +348,10 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
 
                         _openCampId = cid;
                         _detailOpen = true;
-                        await Navigator.push(
+
+                        // ─────────────────────────────────────────────
+                        // CHANGED: 상세화면에서 반환값을 받아 로드뷰를 열어준다.
+                        final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder:
@@ -325,9 +366,33 @@ class _NearbyMapPageState extends State<NearbyMapPage> {
                                 ),
                           ),
                         );
+
                         if (!mounted) return;
                         _detailOpen = false;
                         _openCampId = null;
+
+                        if (result == 'roadview') {
+                          // 1) 해당 캠핑장 좌표로 지도 중심 이동
+                          final centered = await _centerMapViaJs(
+                            camp.lat,
+                            camp.lng,
+                          );
+                          if (!centered) _reload();
+
+                          // 2) 로드뷰 열기 시도
+                          final opened = await _openRoadViewAt(
+                            camp.lat,
+                            camp.lng,
+                          );
+                          if (!opened && mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('로드뷰를 열 수 없습니다. 지도를 다시 로드합니다.'),
+                              ),
+                            );
+                          }
+                        }
+                        // ─────────────────────────────────────────────
                       },
                     );
                   },
