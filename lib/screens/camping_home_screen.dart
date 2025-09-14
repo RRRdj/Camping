@@ -31,6 +31,7 @@ class CampingHomeScreen extends StatefulWidget {
   State<CampingHomeScreen> createState() => _CampingHomeScreenState();
 }
 
+// ────────────────────────── 필터 섹션 공통 위젯 ──────────────────────────
 class _FilterSection extends StatelessWidget {
   final String title;
   final List<String> options;
@@ -56,7 +57,6 @@ class _FilterSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 섹션 헤더
           Row(
             children: [
               Text(
@@ -69,7 +69,8 @@ class _FilterSection extends StatelessWidget {
               const SizedBox(width: 8),
               if (count > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: cs.secondaryContainer,
                     borderRadius: BorderRadius.circular(999),
@@ -96,8 +97,6 @@ class _FilterSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-
-          // 칩들
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -107,7 +106,6 @@ class _FilterSection extends StatelessWidget {
                 label: Text(opt, overflow: TextOverflow.ellipsis),
                 selected: isSel,
                 onSelected: (_) => onToggle(opt),
-                // 디자인
                 labelPadding: const EdgeInsets.symmetric(horizontal: 10),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 showCheckmark: false,
@@ -195,10 +193,14 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   void initState() {
     super.initState();
     _loadHomeLocation();
-    FirebaseFirestore.instance.collection('campgrounds').snapshots().listen((snap) {
+    FirebaseFirestore.instance
+        .collection('campgrounds')
+        .snapshots()
+        .listen((snap) {
       if (!mounted) return;
       setState(() {
-        _camps = snap.docs.map((d) => d.data()! as Map<String, dynamic>).toList();
+        _camps =
+            snap.docs.map((d) => d.data()! as Map<String, dynamic>).toList();
       });
     });
   }
@@ -240,7 +242,8 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
     if (diffDays < 0 || diffDays > 13) return null;
 
     final dateStr = DateFormat('yyyy-MM-dd').format(d);
-    final cacheKey = '${lat.toStringAsFixed(4)},${lng.toStringAsFixed(4)}|$dateStr';
+    final cacheKey =
+        '${lat.toStringAsFixed(4)},${lng.toStringAsFixed(4)}|$dateStr';
     if (_weatherCache.containsKey(cacheKey)) return _weatherCache[cacheKey];
 
     final url = Uri.parse(
@@ -274,8 +277,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
         'temp': _avgNum(tmax[idx], tmin[idx]),
         'max': (tmax[idx] as num?)?.toDouble(),
         'min': (tmin[idx] as num?)?.toDouble(),
-        'chanceOfRain':
-        (prcpProb.isNotEmpty && prcpProb[idx] != null)
+        'chanceOfRain': (prcpProb.isNotEmpty && prcpProb[idx] != null)
             ? (prcpProb[idx] as num).round()
             : null,
       };
@@ -343,7 +345,6 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
 
     return result;
   }
-
   // =====================================================================
 
   // ======================= 필터 Drawer ==================================
@@ -392,7 +393,8 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                     _FilterSection(
                       title: '지역',
                       options: _camps
-                          .map((c) => (c['location'] as String).split(' ').first)
+                          .map((c) =>
+                      (c['location'] as String).split(' ').first)
                           .toSet()
                           .toList()
                         ..sort(),
@@ -548,39 +550,8 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
       ),
     );
   }
-
-  Widget _buildSection({
-    required String title,
-    required List<String> options,
-    required List<String> selected,
-    required void Function(String) onToggle,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: options
-              .map(
-                (opt) => ChoiceChip(
-              label: Text(opt),
-              selected: selected.contains(opt),
-              onSelected: (_) => onToggle(opt),
-              selectedColor: Colors.teal.shade100,
-              backgroundColor: Colors.grey.shade200,
-            ),
-          )
-              .toList(),
-        ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
   // =====================================================================
+
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -633,6 +604,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
       ),
       body: Column(
         children: [
+          // 상단 검색 + 날짜 버튼
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
@@ -696,8 +668,9 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                 if (!campSnap.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final camps =
-                campSnap.data!.docs.map((d) => d.data()! as Map<String, dynamic>).toList();
+                final camps = campSnap.data!.docs
+                    .map((d) => d.data()! as Map<String, dynamic>)
+                    .toList();
 
                 return StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
@@ -710,7 +683,8 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
 
                     final availabilityMap = <String, Map<String, dynamic>>{};
                     for (var doc in availSnap.data!.docs) {
-                      availabilityMap[doc.id] = doc.data()! as Map<String, dynamic>;
+                      availabilityMap[doc.id] =
+                      doc.data()! as Map<String, dynamic>;
                     }
 
                     // 필터링
@@ -721,40 +695,47 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                           !name.contains(_appliedKeyword!.toLowerCase())) {
                         return false;
                       }
-                      final region = (c['location'] as String).split(' ').first;
-                      if (_appliedRegion.isNotEmpty && !_appliedRegion.contains(region)) {
+                      final region =
+                          (c['location'] as String).split(' ').first;
+                      if (_appliedRegion.isNotEmpty &&
+                          !_appliedRegion.contains(region)) {
                         return false;
                       }
                       if (_appliedType.isNotEmpty &&
                           !_appliedType.contains(c['type'] as String)) {
                         return false;
                       }
-                      final duties = (c['inDuty'] as String? ?? '').split(',');
+                      final duties =
+                      (c['inDuty'] as String? ?? '').split(',');
                       if (_appliedDuty.isNotEmpty &&
                           !_appliedDuty.any((d) => duties.contains(d))) {
                         return false;
                       }
                       final env = c['lctCl'] as String? ?? '';
-                      if (_appliedEnv.isNotEmpty && !_appliedEnv.contains(env)) {
+                      if (_appliedEnv.isNotEmpty &&
+                          !_appliedEnv.contains(env)) {
                         return false;
                       }
                       final amens =
-                      (c['amenities'] as List<dynamic>? ?? []).cast<String>();
+                      (c['amenities'] as List<dynamic>? ?? [])
+                          .cast<String>();
                       if (_appliedAmenity.isNotEmpty &&
                           !_appliedAmenity.every(amens.contains)) {
                         return false;
                       }
                       if (_onlyAvailable) {
-                        final avail = (availabilityMap[c['name']]?[dateKey]?['available'] ??
-                            c['available']) as int? ??
-                            0;
+                        final avail =
+                            (availabilityMap[c['name']]?[dateKey]?['available'] ??
+                                c['available']) as int? ??
+                                0;
                         if (avail <= 0) return false;
                       }
                       return true;
                     }).toList();
 
                     // 거리순 정렬
-                    filtered.sort((a, b) => _campDistance(a).compareTo(_campDistance(b)));
+                    filtered.sort((a, b) =>
+                        _campDistance(a).compareTo(_campDistance(b)));
 
                     // 정렬 안정성 위해 baseIdx 부여
                     final baseItems = List.generate(filtered.length, (i) {
@@ -766,30 +747,29 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 개수 + 현위치(변경)
+                        // 개수 + 현위치(변경) — Wrap으로 변경하여 줄바꿈 & 칩 확장 허용
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: Row(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Text('$count개의 캠핑장이 검색되었어요!'),
-                              const Spacer(),
-                              if (_currentPlaceName.isNotEmpty)
-                                ActionChip(
-                                  avatar: const Icon(Icons.place_outlined, size: 16),
-                                  label: Text(
-                                    '$_currentPlaceName  •  변경',
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            PlaceSearchScreen(onLocationChange: updateUserLocation),
+                              _LocationChip(
+                                placeName: _currentPlaceName,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => PlaceSearchScreen(
+                                        onLocationChange: updateUserLocation,
                                       ),
-                                    );
-                                  },
-                                ),
+                                    ),
+                                  );
+                                },
+                              ),
                             ],
                           ),
                         ),
@@ -797,12 +777,14 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                         // 결과 리스트
                         Expanded(
                           child: (_ratingSort == RatingSort.none)
-                              ? _buildListView(baseItems, availabilityMap, dateKey)
+                              ? _buildListView(
+                              baseItems, availabilityMap, dateKey)
                               : FutureBuilder<Map<String, double?>>(
                             future: _loadAvgRatingsFor(
                               baseItems
                                   .take(10)
-                                  .map((e) => e['camp'] as Map<String, dynamic>)
+                                  .map((e) => e['camp']
+                              as Map<String, dynamic>)
                                   .toList(),
                             ),
                             builder: (context, ratingSnap) {
@@ -812,13 +794,19 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                               }
                               final ratingMap = ratingSnap.data!;
                               final sorted =
-                              List<Map<String, dynamic>>.from(baseItems);
+                              List<Map<String, dynamic>>.from(
+                                  baseItems);
 
-                              int cmp(Map<String, dynamic> a, Map<String, dynamic> b) {
-                                final ca = a['camp'] as Map<String, dynamic>;
-                                final cb = b['camp'] as Map<String, dynamic>;
-                                final ida = ca['contentId']?.toString() ?? '';
-                                final idb = cb['contentId']?.toString() ?? '';
+                              int cmp(Map<String, dynamic> a,
+                                  Map<String, dynamic> b) {
+                                final ca = a['camp']
+                                as Map<String, dynamic>;
+                                final cb = b['camp']
+                                as Map<String, dynamic>;
+                                final ida =
+                                    ca['contentId']?.toString() ?? '';
+                                final idb =
+                                    cb['contentId']?.toString() ?? '';
                                 final ra = ratingMap[ida];
                                 final rb = ratingMap[idb];
 
@@ -827,10 +815,15 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
 
                                 if (hasA && hasB) {
                                   final diff = (ra! - rb!).toDouble();
-                                  if (_ratingSort == RatingSort.highFirst) {
-                                    if (diff.abs() > 1e-9) return -diff.sign.toInt();
+                                  if (_ratingSort ==
+                                      RatingSort.highFirst) {
+                                    if (diff.abs() > 1e-9) {
+                                      return -diff.sign.toInt();
+                                    }
                                   } else {
-                                    if (diff.abs() > 1e-9) return diff.sign.toInt();
+                                    if (diff.abs() > 1e-9) {
+                                      return diff.sign.toInt();
+                                    }
                                   }
                                   return (a['baseIdx'] as int)
                                       .compareTo(b['baseIdx'] as int);
@@ -845,8 +838,8 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
                               }
 
                               sorted.sort(cmp);
-                              return _buildListView(
-                                  sorted, availabilityMap, dateKey);
+                              return _buildListView(sorted,
+                                  availabilityMap, dateKey);
                             },
                           ),
                         ),
@@ -883,8 +876,10 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
       itemCount: items.length,
       itemBuilder: (ctx4, i) {
         final c = items[i]['camp'] as Map<String, dynamic>;
-        final aMap = availabilityMap[c['name']]?[dateKey] as Map<String, dynamic>?;
-        final avail = aMap?['available'] as int? ?? (c['available'] as int? ?? 0);
+        final aMap =
+        availabilityMap[c['name']]?[dateKey] as Map<String, dynamic>?;
+        final avail =
+            aMap?['available'] as int? ?? (c['available'] as int? ?? 0);
         final total = aMap?['total'] as int? ?? (c['total'] as int? ?? 0);
         final isAvail = avail > 0;
 
@@ -928,6 +923,7 @@ class _CampingHomeScreenState extends State<CampingHomeScreen> {
   }
 }
 
+// ───────────────────────── 상단 컨트롤 바 ─────────────────────────
 class ControlBar extends StatelessWidget {
   final RatingSort ratingSort;
   final ValueChanged<RatingSort> onChangeSort;
@@ -944,7 +940,6 @@ class ControlBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     Widget _segLabel(IconData icon, String text, {double gap = 4}) {
       return Row(
         mainAxisSize: MainAxisSize.min,
@@ -980,7 +975,8 @@ class ControlBar extends StatelessWidget {
               onSelectionChanged: (s) => onChangeSort(s.first),
               showSelectedIcon: false,
               style: SegmentedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 selectedBackgroundColor: Colors.teal.withOpacity(0.12),
                 selectedForegroundColor: Colors.teal.shade800,
                 backgroundColor: Theme.of(context).colorScheme.surface,
@@ -1007,7 +1003,71 @@ class ControlBar extends StatelessWidget {
   }
 }
 
-// ======================= CampCard (카드형 리스트 아이템) ==================
+// ───────────────────────── 장소 설정 칩(멀티라인) ────────────────────────
+class _LocationChip extends StatelessWidget {
+  final String placeName;
+  final VoidCallback onTap;
+  const _LocationChip({required this.placeName, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final maxW = MediaQuery.of(context).size.width - 32;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxW),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: cs.outlineVariant),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(Icons.place_outlined, size: 16, color: cs.onSurfaceVariant),
+              const SizedBox(width: 6),
+
+              // ⬇️ Flexible → Expanded 로 변경 (여러 줄 허용은 그대로)
+              Expanded(
+                child: Text(
+                  placeName,
+                  softWrap: true,
+                  style: TextStyle(fontSize: 12, color: cs.onSurface),
+                ),
+              ),
+
+              const SizedBox(width: 8),
+              // 오른쪽 끝에 고정될 트레일 영역
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(width: 1, height: 14, color: cs.outlineVariant),
+                  const SizedBox(width: 8),
+                  Text(
+                    '변경',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: cs.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+// ───────────────────────── 캠프 카드(공통 아이템) ────────────────────────
 class CampCard extends StatelessWidget {
   final Map<String, dynamic> camp;
   final String distanceKm;
@@ -1037,8 +1097,10 @@ class CampCard extends StatelessWidget {
     final wmo = (weather?['wmo'] as num?)?.toInt();
     final temp = (weather?['temp'] as num?)?.toDouble();
     final rain = weather?['chanceOfRain'] as int?;
-    final availColor = isAvailable ? const Color(0xFF16A34A) : const Color(0xFFDC2626);
-    final availBg    = isAvailable ? const Color(0xFFE9F7EE) : const Color(0xFFFDECEC);
+    final availColor =
+    isAvailable ? const Color(0xFF16A34A) : const Color(0xFFDC2626);
+    final availBg =
+    isAvailable ? const Color(0xFFE9F7EE) : const Color(0xFFFDECEC);
 
     final contentId = camp['contentId']?.toString() ?? '';
 
@@ -1051,14 +1113,15 @@ class CampCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         child: Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           elevation: 0,
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 썸네일(조금 컴팩트)
+                // 썸네일
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: (camp['firstImageUrl'] != null &&
@@ -1073,7 +1136,8 @@ class CampCard extends StatelessWidget {
                     width: 76,
                     height: 76,
                     color: const Color(0xFFF0F2F5),
-                    child: const Icon(Icons.park, color: Colors.teal, size: 34),
+                    child: const Icon(Icons.park,
+                        color: Colors.teal, size: 34),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1083,15 +1147,14 @@ class CampCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── 1행: 이름 + 별점(같은 라인)
+                      // 1행: 이름 + 별점
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 이름(여러 줄 허용, 줄임표 X)
                           Expanded(
                             child: Text(
                               camp['name'] ?? '',
-                              softWrap: true,
+                              softWrap: true, // 말줄임 없이 여러 줄 허용
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
@@ -1101,13 +1164,14 @@ class CampCard extends StatelessWidget {
                           ),
                           if (contentId.isNotEmpty) ...[
                             const SizedBox(width: 8),
-                            _LiveAverageRatingBadge(contentId: contentId, dense: true),
+                            _LiveAverageRatingBadge(
+                                contentId: contentId, dense: true),
                           ],
                         ],
                       ),
                       const SizedBox(height: 6),
 
-                      // ── 2행: 주소 · 유형 (좌)  |  (우) 거리 + 북마크  ← 같은 라인
+                      // 2행: 주소 · 유형  |  거리 + 북마크 (같은 라인)
                       Row(
                         children: [
                           Expanded(
@@ -1115,13 +1179,15 @@ class CampCard extends StatelessWidget {
                               '${_formatAddress(camp)} · ${camp['type'] ?? ''}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.grey),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Text(
                             '• ${distanceKm}km',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.grey),
                           ),
                           const SizedBox(width: 2),
                           SizedBox(
@@ -1131,7 +1197,9 @@ class CampCard extends StatelessWidget {
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                               icon: Icon(
-                                bookmarked ? Icons.bookmark : Icons.bookmark_border,
+                                bookmarked
+                                    ? Icons.bookmark
+                                    : Icons.bookmark_border,
                                 size: 20,
                                 color: bookmarked ? Colors.red : Colors.grey,
                               ),
@@ -1143,7 +1211,7 @@ class CampCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
 
-                      // ── 3행: (좌) 날씨  ────  (우) 가능/마감 (맨 아래 오른쪽)
+                      // 3행: (좌) 날씨  ────  (우) 가능/마감 Pill
                       Row(
                         children: [
                           if (weather != null)
@@ -1170,7 +1238,7 @@ class CampCard extends StatelessWidget {
   }
 }
 
-
+// ────────────────────────── 보조(날씨/가능Pill) ─────────────────────────
 class _WeatherPill extends StatelessWidget {
   final int? wmo;
   final double? temp;
@@ -1180,7 +1248,8 @@ class _WeatherPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final text = '${temp?.toStringAsFixed(1) ?? '-'}℃${rain != null ? ' · ${rain}%' : ''}';
+    final text =
+        '${temp?.toStringAsFixed(1) ?? '-'}℃${rain != null ? ' · ${rain}%' : ''}';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1241,10 +1310,10 @@ class _AvailPill extends StatelessWidget {
   }
 }
 
-// ======================= ⭐ 실시간 평균 별점 배지 위젯 ====================
+// ───────────────────────── ⭐ 평균 별점 배지(실시간) ──────────────────────
 class _LiveAverageRatingBadge extends StatelessWidget {
   final String contentId;
-  final bool dense; // 홈 리스트에서 더 컴팩트하게 보이도록
+  final bool dense;
 
   const _LiveAverageRatingBadge({required this.contentId, this.dense = false});
 
@@ -1308,7 +1377,7 @@ class _LiveAverageRatingBadge extends StatelessWidget {
   }
 }
 
-// ======================= 주소 포맷 & 헬퍼 ================================
+// ───────────────────────── 주소 포맷 & 헬퍼 ─────────────────────────────
 String _formatAddress(Map<String, dynamic> c) {
   final loc = (c['location'] as String?)?.trim();
   if (loc != null && loc.isNotEmpty) return loc;
