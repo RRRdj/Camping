@@ -45,163 +45,170 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    // 탭바/제스처바에 가리지 않도록 리스트 하단 여유
+    final listBottomPadding = bottomInset + 16;
+
     return Scaffold(
       appBar: AppBar(title: const Text('사용자 관리')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: const InputDecoration(
-                      labelText: '검색어 입력',
-                      border: OutlineInputBorder(),
+      body: SafeArea(
+        bottom: true,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: const InputDecoration(
+                        labelText: '검색어 입력',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                DropdownButton<String>(
-                  value: _searchField,
-                  items: const [
-                    DropdownMenuItem(value: 'name', child: Text('이름')),
-                    DropdownMenuItem(value: 'nickname', child: Text('닉네임')),
-                    DropdownMenuItem(value: 'email', child: Text('이메일')),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) setState(() => _searchField = v);
-                  },
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  DropdownButton<String>(
+                    value: _searchField,
+                    items: const [
+                      DropdownMenuItem(value: 'name', child: Text('이름')),
+                      DropdownMenuItem(value: 'nickname', child: Text('닉네임')),
+                      DropdownMenuItem(value: 'email', child: Text('이메일')),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) setState(() => _searchField = v);
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _users.orderBy(_searchField).snapshots(),
-              builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snap.hasError) {
-                  return Center(child: Text('로드 실패: ${snap.error}'));
-                }
-                final all = snap.data?.docs ?? [];
-                final filtered =
-                    all.where((doc) {
-                      final v =
-                          (doc.data()[_searchField] ?? '')
-                              .toString()
-                              .toLowerCase();
-                      return _searchText.isEmpty || v.contains(_searchText);
-                    }).toList();
+            Expanded(
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _users.orderBy(_searchField).snapshots(),
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snap.hasError) {
+                    return Center(child: Text('로드 실패: ${snap.error}'));
+                  }
+                  final all = snap.data?.docs ?? [];
+                  final filtered = all.where((doc) {
+                    final v = (doc.data()[_searchField] ?? '')
+                        .toString()
+                        .toLowerCase();
+                    return _searchText.isEmpty || v.contains(_searchText);
+                  }).toList();
 
-                if (filtered.isEmpty) {
-                  return const Center(child: Text('검색 결과가 없습니다.'));
-                }
+                  if (filtered.isEmpty) {
+                    return const Center(child: Text('검색 결과가 없습니다.'));
+                  }
 
-                return ListView.separated(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 4),
-                  itemBuilder: (context, i) {
-                    final d = filtered[i];
-                    final data = d.data();
-                    final uid = d.id;
-                    final name = data['name'] as String? ?? '-';
-                    final nick = data['nickname'] as String? ?? '-';
-                    final email = data['email'] as String? ?? '-';
-                    final blocked = data['blocked'] as bool? ?? false;
+                  return ListView.separated(
+                    padding:
+                    EdgeInsets.fromLTRB(0, 0, 0, listBottomPadding),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 4),
+                    itemBuilder: (context, i) {
+                      final d = filtered[i];
+                      final data = d.data();
+                      final uid = d.id;
+                      final name = data['name'] as String? ?? '-';
+                      final nick = data['nickname'] as String? ?? '-';
+                      final email = data['email'] as String? ?? '-';
+                      final blocked = data['blocked'] as bool? ?? false;
 
-                    return Card(
-                      key: ValueKey(uid),
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      child: ListTile(
-                        title: Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      return Card(
+                        key: ValueKey(uid),
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
                         ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('닉네임: $nick', overflow: TextOverflow.ellipsis),
-                            Text(
-                              '이메일: $email',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                        trailing: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                blocked ? Colors.grey : Colors.redAccent,
+                        child: ListTile(
+                          title: Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          onPressed: () async {
-                            final ok = await showDialog<bool>(
-                              context: context,
-                              builder:
-                                  (ctx) => AlertDialog(
-                                    title: Text(blocked ? '차단 해제' : '차단'),
-                                    content: Text(
-                                      blocked
-                                          ? '해당 사용자의 차단을 해제하시겠습니까?'
-                                          : '해당 사용자를 차단하시겠습니까?',
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('닉네임: $nick',
+                                  overflow: TextOverflow.ellipsis),
+                              Text('이메일: $email',
+                                  overflow: TextOverflow.ellipsis),
+                            ],
+                          ),
+                          trailing: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                              blocked ? Colors.grey : Colors.redAccent,
+                              minimumSize: const Size(88, 36),
+                              padding:
+                              const EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                            onPressed: () async {
+                              final ok = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: Text(blocked ? '차단 해제' : '차단'),
+                                  content: Text(
+                                    blocked
+                                        ? '해당 사용자의 차단을 해제하시겠습니까?'
+                                        : '해당 사용자를 차단하시겠습니까?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, false),
+                                      child: const Text('취소'),
                                     ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed:
-                                            () => Navigator.pop(ctx, false),
-                                        child: const Text('취소'),
-                                      ),
-                                      TextButton(
-                                        onPressed:
-                                            () => Navigator.pop(ctx, true),
-                                        child: Text(
-                                          blocked ? '해제' : '차단',
-                                          style: const TextStyle(
-                                            color: Colors.red,
-                                          ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, true),
+                                      child: Text(
+                                        blocked ? '해제' : '차단',
+                                        style: const TextStyle(
+                                          color: Colors.red,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                            );
-                            if (ok != true) return;
-
-                            try {
-                              await _users.doc(uid).update({
-                                'blocked': !blocked,
-                              });
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    blocked ? '차단 해제됨' : '차단 처리되었습니다',
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               );
-                            } catch (e) {
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('처리 실패: $e')),
-                              );
-                            }
-                          },
-                          child: Text(blocked ? '차단 해제' : '차단'),
+                              if (ok != true) return;
+
+                              try {
+                                await _users.doc(uid).update({
+                                  'blocked': !blocked,
+                                });
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(blocked
+                                        ? '차단 해제됨'
+                                        : '차단 처리되었습니다'),
+                                  ),
+                                );
+                              } catch (e) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('처리 실패: $e')),
+                                );
+                              }
+                            },
+                            child: Text(blocked ? '차단 해제' : '차단'),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

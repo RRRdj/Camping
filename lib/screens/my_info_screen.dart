@@ -28,8 +28,7 @@ class MyInfoScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        future:
-            FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+        future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const AppLoading();
@@ -46,9 +45,8 @@ class MyInfoScreen extends StatelessWidget {
           final provider = data['provider'] as String?;
           final emailFromFirestore = (data['email'] as String?) ?? '';
           final displayEmail =
-              emailFromFirestore.isNotEmpty
-                  ? emailFromFirestore
-                  : (user.email ?? '');
+          emailFromFirestore.isNotEmpty ? emailFromFirestore : (user.email ?? '');
+          final isAdminUser = (data['name'] as String? ?? '') == '관리자';
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -60,10 +58,9 @@ class MyInfoScreen extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 50,
-                        backgroundImage:
-                            (data['photoUrl'] ?? '').toString().isNotEmpty
-                                ? NetworkImage(data['photoUrl'])
-                                : null,
+                        backgroundImage: (data['photoUrl'] ?? '').toString().isNotEmpty
+                            ? NetworkImage(data['photoUrl'])
+                            : null,
                         backgroundColor: Colors.grey[200],
                       ),
                       const SizedBox(height: 12),
@@ -103,32 +100,42 @@ class MyInfoScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 24),
                 const Divider(),
+
+                // ✅ 관리자 전용 메뉴: 이름이 '관리자'일 때만 노출
+                if (isAdminUser) ...[
+                  const SizedBox(height: 8),
+                  _item(
+                    context,
+                    icon: Icons.admin_panel_settings,
+                    title: '관리자 전용 화면',
+                    onTap: () => Navigator.pushNamed(context, '/admin'),
+                    iconColor: Colors.deepPurple,
+                  ),
+                  const SizedBox(height: 8),
+                  const Divider(),
+                ],
+
                 const SizedBox(height: 16),
                 _item(
                   context,
                   icon: Icons.person,
                   title: '개인정보 수정',
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const EditProfileScreen(),
-                        ),
-                      ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                  ),
                 ),
                 _item(
                   context,
                   icon: Icons.star,
                   title: '후기 관리',
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const MyReviewsScreen(),
-                        ),
-                      ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MyReviewsScreen()),
+                  ),
                 ),
                 _item(
                   context,
@@ -140,13 +147,10 @@ class MyInfoScreen extends StatelessWidget {
                   context,
                   icon: Icons.settings,
                   title: '환경설정',
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SettingsScreen(),
-                        ),
-                      ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 _item(
@@ -156,45 +160,36 @@ class MyInfoScreen extends StatelessWidget {
                   onTap: () async {
                     final ok = await showDialog<bool>(
                       context: context,
-                      builder:
-                          (ctx) => AlertDialog(
-                            title: const Text('회원 탈퇴'),
-                            content: const Text(
-                              '정말 탈퇴하시겠습니까? 탈퇴 시 복구할 수 없습니다.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx, false),
-                                child: const Text('취소'),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx, true),
-                                child: const Text(
-                                  '탈퇴',
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                              ),
-                            ],
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('회원 탈퇴'),
+                        content: const Text('정말 탈퇴하시겠습니까? 탈퇴 시 복구할 수 없습니다.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('취소'),
                           ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text(
+                              '탈퇴',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
                     );
                     if (ok != true) return;
 
                     showDialog(
                       context: context,
                       barrierDismissible: false,
-                      builder:
-                          (_) =>
-                              const Center(child: CircularProgressIndicator()),
+                      builder: (_) => const Center(child: CircularProgressIndicator()),
                     );
 
                     try {
                       await _authSvc.deleteAccount();
                       if (!context.mounted) return;
-                      Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        '/login',
-                        (_) => false,
-                      );
+                      Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('회원 탈퇴가 완료되었습니다.')),
                       );
@@ -227,15 +222,16 @@ class MyInfoScreen extends StatelessWidget {
   }
 
   Widget _item(
-    BuildContext ctx, {
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    Color iconColor = Colors.teal,
-  }) => ListTile(
-    leading: Icon(icon, color: iconColor),
-    title: Text(title, style: const TextStyle(fontSize: 16)),
-    trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-    onTap: onTap,
-  );
+      BuildContext ctx, {
+        required IconData icon,
+        required String title,
+        required VoidCallback onTap,
+        Color iconColor = Colors.teal,
+      }) =>
+      ListTile(
+        leading: Icon(icon, color: iconColor),
+        title: Text(title, style: const TextStyle(fontSize: 16)),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        onTap: onTap,
+      );
 }

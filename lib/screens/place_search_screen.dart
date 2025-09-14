@@ -37,9 +37,9 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
     if (res.statusCode == 200) {
       final docs = json.decode(res.body)['documents'] as List;
       final addr =
-          docs.isNotEmpty
-              ? docs[0]['address']['address_name'] as String
-              : '주소 정보 없음';
+      docs.isNotEmpty
+          ? docs[0]['address']['address_name'] as String
+          : '주소 정보 없음';
       _addrCache[key] = addr;
       return addr;
     }
@@ -132,20 +132,41 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
   }
 
   void _showBookmarkSheet() {
+    final parentCtx = context;
     showModalBottomSheet(
       context: context,
       builder:
           (ctx) => PlaceBookmarkSheet(
-            initialBookmarks: List<Place>.from(_bookmarks),
-            initialHome: _home,
-            onToggleBookmark: (p) async {
-              await _toggleBookmark(p);
-            },
-            onSetHome: (p) async {
-              await _setAsHome(p);
-              widget.onLocationChange(p.name, p.latitude, p.longitude);
-            },
-          ),
+        initialBookmarks: List<Place>.from(_bookmarks),
+        initialHome: _home,
+        onToggleBookmark: (p) async {
+          await _toggleBookmark(p);
+        },
+        onSetHome: (p) async {
+          await _setAsHome(p);
+          widget.onLocationChange(p.name, p.latitude, p.longitude);
+
+          final banner = MaterialBanner(
+            content: Text('${p.name}이(가) 현위치로 지정되었습니다'),
+            leading: const Icon(Icons.home, color: Colors.teal),
+            backgroundColor:
+            Theme.of(parentCtx).colorScheme.surfaceContainerHighest,
+            actions: [
+              TextButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(
+                    parentCtx,
+                  ).hideCurrentMaterialBanner();
+                },
+                child: const Text('닫기'),
+              ),
+            ],
+          );
+
+          final messenger = ScaffoldMessenger.of(parentCtx);
+          messenger.showMaterialBanner(banner);
+        },
+      ),
     );
   }
 
@@ -167,21 +188,21 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
                       prefixIcon: const Icon(Icons.search),
                       border: const OutlineInputBorder(),
                       suffixIcon:
-                          _isLoading
-                              ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                              : IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  _searchCtrl.clear();
-                                  setState(() => _suggestions.clear());
-                                },
-                              ),
+                      _isLoading
+                          ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                        ),
+                      )
+                          : IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          setState(() => _suggestions.clear());
+                        },
+                      ),
                     ),
                     textInputAction: TextInputAction.search,
                     onSubmitted: (v) => _searchPlaces(v.trim()),

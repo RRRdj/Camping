@@ -47,20 +47,16 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/main');
     } on fb.FirebaseAuthException catch (e) {
-      final msg =
-          (e.code == 'user-not-found' || e.code == 'wrong-password')
-              ? '이메일 또는 비밀번호가 올바르지 않습니다.'
-              : '로그인에 실패했습니다.';
+      final msg = (e.code == 'user-not-found' || e.code == 'wrong-password')
+          ? '이메일 또는 비밀번호가 올바르지 않습니다.'
+          : '로그인에 실패했습니다.';
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(msg)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('로그인 중 오류가 발생했습니다. $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('로그인 중 오류가 발생했습니다. $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -111,12 +107,57 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           message += ': $error';
         }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  // 관리자 진입 다이얼로그
+  Future<void> _openAdminGate() async {
+    final entered = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final codeCtr = TextEditingController();
+        return AlertDialog(
+          title: const Text('관리자 코드를 입력하세요'),
+          content: TextField(
+            controller: codeCtr,
+            autofocus: true,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            maxLength: 8,
+            decoration: const InputDecoration(
+              hintText: '숫자 8자리',
+              border: OutlineInputBorder(),
+              counterText: '',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, codeCtr.text.trim()),
+              child: const Text('확인'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (entered == null) return;
+    if (entered == '12345678') {
+      if (!mounted) return;
+      Navigator.pushNamed(context, '/admin');
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('관리자 코드가 올바르지 않습니다.')),
+      );
     }
   }
 
@@ -147,79 +188,75 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      appBar: AppBar(title: const Text('금오캠핑'), centerTitle: true),
+      appBar: AppBar(title: const Text('캠핑모아'), centerTitle: true),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child:
-            _loading
-                ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 48),
-                      const Text(
-                        '로그인',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      TextField(
-                        controller: _emailCtr,
-                        decoration: const InputDecoration(
-                          labelText: '이메일',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _pwCtr,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: '비밀번호',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      CheckboxListTile(
-                        value: _remember,
-                        onChanged:
-                            (v) => setState(() => _remember = v ?? false),
-                        title: const Text('자동 로그인'),
-                        controlAffinity: ListTileControlAffinity.leading,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loginWithEmail,
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 48),
-                        ),
-                        child: const Text('로그인'),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildKakaoButton(),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed:
-                            () => Navigator.pushNamed(context, '/signup'),
-                        child: const Text('회원가입'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pushNamed(context, '/admin'),
-                        child: const Text(
-                          '관리자 전용 화면',
-                          style: TextStyle(color: Colors.redAccent),
-                        ),
-                      ),
-                      const SizedBox(height: 48),
-                    ],
-                  ),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 48),
+              const Text(
+                '로그인',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
                 ),
+              ),
+              const SizedBox(height: 32),
+              TextField(
+                controller: _emailCtr,
+                decoration: const InputDecoration(
+                  labelText: '이메일',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _pwCtr,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: '비밀번호',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              CheckboxListTile(
+                value: _remember,
+                onChanged: (v) => setState(() => _remember = v ?? false),
+                title: const Text('자동 로그인'),
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loginWithEmail,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                ),
+                child: const Text('로그인'),
+              ),
+              const SizedBox(height: 8),
+              _buildKakaoButton(),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pushNamed(context, '/signup'),
+                child: const Text('회원가입'),
+              ),
+              TextButton(
+                onPressed: _openAdminGate, // ← 관리자 코드 입력 다이얼로그
+                child: const Text(
+                  '관리자 전용 화면',
+                  style: TextStyle(color: Colors.redAccent),
+                ),
+              ),
+              const SizedBox(height: 48),
+            ],
+          ),
+        ),
       ),
     );
   }
