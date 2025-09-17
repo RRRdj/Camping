@@ -56,6 +56,7 @@ class ReviewRepository {
             .id;
 
     final data = {
+      'contentId': contentId,                // ✅ 추가
       'userId': uid,
       'campName': campName,
       'rating': rating,

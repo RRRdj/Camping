@@ -45,7 +45,9 @@ class CampRepository {
     if (imageFiles != null) {
       for (final file in imageFiles) {
         final ext = file.path.split('.').last;
-        final ref = _storage.ref('review_images/$contentId/${_uuid.v4()}.$ext');
+        final user = FirebaseAuth.instance.currentUser!;
+        final ref = _storage
+            .ref('review_images/$contentId/${user.uid}/${_uuid.v4()}.$ext');
         final task = await ref.putFile(File(file.path));
         imageUrls.add(await task.ref.getDownloadURL());
       }
@@ -122,7 +124,9 @@ class CampRepository {
     if (newImageFiles != null) {
       for (final file in newImageFiles) {
         final ext = file.path.split('.').last;
-        final ref = _storage.ref('review_images/$contentId/${_uuid.v4()}.$ext');
+        final user = FirebaseAuth.instance.currentUser!;
+        final ref = _storage
+            .ref('review_images/$contentId/${user.uid}/${_uuid.v4()}.$ext');
         final task = await ref.putFile(File(file.path));
         imageUrls.add(await task.ref.getDownloadURL());
       }
