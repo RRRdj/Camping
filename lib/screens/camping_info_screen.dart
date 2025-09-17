@@ -12,6 +12,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 import '../repositories/camp_repository.dart';
+import '../repositories/review_repository.dart';
 import '../services/go_camping_service.dart';
 import '../widgets/amenity_section.dart';
 import '../widgets/info_row.dart';
@@ -53,9 +54,32 @@ class CampingInfoScreen extends StatefulWidget {
   State<CampingInfoScreen> createState() => _CampingInfoScreenState();
 }
 
+// 값이 double이든 String이든 안전하게 double로
+double _asDouble(dynamic v) {
+  if (v == null) return 0.0;
+  if (v is num) return v.toDouble();
+  return double.tryParse(v.toString()) ?? 0.0;
+}
+
+// 어떤 타입이 와도 String으로
+String _asString(dynamic v, {String fallback = ''}) {
+  if (v == null) return fallback;
+  final s = v.toString();
+  return s.isEmpty ? fallback : s;
+}
+
+// String?로 필요할 때 (비어있으면 null)
+String? _asNullableString(dynamic v) {
+  if (v == null) return null;
+  final s = v.toString().trim();
+  return s.isEmpty ? null : s;
+}
+
+
 class _CampingInfoScreenState extends State<CampingInfoScreen> {
   final _repo = CampRepository();
   final _service = GoCampingService();
+  final _reviewRepo = ReviewRepository();
 
   final ImagePicker _picker = ImagePicker();
   List<XFile> _pickedImages = [];
@@ -113,8 +137,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
 
     _weatherFuture = _campFuture.then((doc) {
       final c = doc.data()!;
-      final lat = double.tryParse((c['mapY'] as String?) ?? '') ?? 0.0;
-      final lng = double.tryParse((c['mapX'] as String?) ?? '') ?? 0.0;
+      final lat = _asDouble(c['mapY']);
+      final lng = _asDouble(c['mapX']);
       return fetchWeatherForDate(lat, lng, widget.selectedDate);
     });
 
@@ -128,8 +152,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
         oldWidget.campName != widget.campName) {
       _weatherFuture = _campFuture.then((doc) {
         final c = doc.data()!;
-        final lat = double.tryParse((c['mapY'] as String?) ?? '') ?? 0.0;
-        final lng = double.tryParse((c['mapX'] as String?) ?? '') ?? 0.0;
+        final lat = _asDouble(c['mapY']);
+        final lng = _asDouble(c['mapX']);
         return fetchWeatherForDate(lat, lng, widget.selectedDate);
       });
       setState(() {});
@@ -193,6 +217,8 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
             'memo': result,
             'savedAt': DateTime.now(),
           });
+
+
     }
     setState(() => _memoText = result);
     _showMsg('메모가 저장되었습니다.');
@@ -254,12 +280,13 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
     if (_txtCtr.text.trim().isEmpty) return _showMsg('내용을 입력하세요.');
     if ((_contentId ?? '').isEmpty) return _showMsg('캠핑장 정보 오류');
 
+    // ✅ 변경: 사진 업로드 + 두 컬렉션 동시 쓰기
     await _repo.addReview(
       contentId: _contentId!,
       campName: widget.campName,
       rating: _rating,
       content: _txtCtr.text.trim(),
-      imageFiles: _pickedImages,
+      imageFiles: _pickedImages, // List<XFile>
     );
 
     _txtCtr.clear();
@@ -360,13 +387,13 @@ class _CampingInfoScreenState extends State<CampingInfoScreen> {
                 (c['amenities'] as List<dynamic>?)?.cast<String>() ?? [];
             _contentId ??= c['contentId']?.toString() ?? '';
 
-            final double latitude =
-                double.tryParse((c['mapY'] as String?) ?? '') ?? 0.0;
-            final double longitude =
-                double.tryParse((c['mapX'] as String?) ?? '') ?? 0.0;
-            final String name = c['name'] as String? ?? widget.campName;
+            // after
+            final double latitude = _asDouble(c['mapY']);
+            final double longitude = _asDouble(c['mapX']);
+            final String name = _asString(c['name'], fallback: widget.campName);
 
             return CustomScrollView(
+
               slivers: [
                 SliverAppBar(
                   pinned: true,
@@ -938,6 +965,7 @@ class _FilteredReviewList extends StatelessWidget {
                             reviewId: reviewId,
                             oldRating: rating,
                             oldContent: content,
+                            oldImageUrls: photos, // ✅ 추가: 기존 이미지 URL들
                           ),
                     ),
                     IconButton(
@@ -1039,67 +1067,169 @@ class _FilteredReviewList extends StatelessWidget {
   }
 
   Future<void> _showEditDialog(
-    BuildContext context, {
-    required String reviewId,
-    required int oldRating,
-    required String oldContent,
-  }) async {
+      BuildContext context, {
+        required String reviewId,
+        required int oldRating,
+        required String oldContent,
+        required List<String> oldImageUrls, // ✅ 추가
+      }) async {
     final contentCtrl = TextEditingController(text: oldContent);
     int newRating = oldRating;
 
+    // ✅ 기존 사진(삭제 가능) + 새로 추가할 사진(XFile)
+    List<String> currentUrls = List.from(oldImageUrls);
+    List<XFile> newImages = [];
+
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('리뷰 수정'),
-            content: Column(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('리뷰 수정'),
+          content: SingleChildScrollView(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                DropdownButton<int>(
-                  value: newRating,
-                  items:
-                      List.generate(
-                        5,
-                        (i) => DropdownMenuItem(
-                          value: i + 1,
-                          child: Text('${i + 1}'),
-                        ),
-                      ).toList(),
-                  onChanged: (v) {
-                    if (v != null) newRating = v;
-                  },
+                Row(
+                  children: [
+                    const Text('평점:'), const SizedBox(width: 8),
+                    DropdownButton<int>(
+                      value: newRating,
+                      items: List.generate(5, (i) => i + 1)
+                          .map((v) => DropdownMenuItem<int>(
+                        value: v,
+                        child: Text('$v'),
+                      ))
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) setState(() => newRating = v);
+                      },
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 8),
                 TextField(
                   controller: contentCtrl,
                   maxLines: 3,
-                  decoration: const InputDecoration(labelText: '내용'),
+                  decoration: const InputDecoration(
+                    labelText: '내용',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
+                const SizedBox(height: 12),
+
+                // ✅ 기존 사진 미리보기 + 삭제
+                if (currentUrls.isNotEmpty) ...[
+                  const Text('기존 사진', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8, runSpacing: 8,
+                    children: currentUrls.asMap().entries.map((e) {
+                      final idx = e.key; final url = e.value;
+                      return Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(url, width: 80, height: 80, fit: BoxFit.cover),
+                          ),
+                          Positioned(
+                            top: 0, right: 0,
+                            child: GestureDetector(
+                              onTap: () => setState(() => currentUrls.removeAt(idx)),
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                    color: Colors.black54, shape: BoxShape.circle),
+                                padding: const EdgeInsets.all(4),
+                                child: const Icon(Icons.close, color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                // ✅ 새 사진 추가 버튼
+                TextButton.icon(
+                  icon: const Icon(Icons.add_photo_alternate),
+                  label: const Text('사진 추가'),
+                  onPressed: () async {
+                    final picker = ImagePicker();
+                    final picked = await picker.pickMultiImage(
+                      imageQuality: 85, maxWidth: 2048,
+                    );
+                    if (picked != null && picked.isNotEmpty) {
+                      setState(() => newImages.addAll(picked));
+                    }
+                  },
+                ),
+
+                // ✅ 새로 추가할 사진 미리보기 + 제거
+                if (newImages.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8, runSpacing: 8,
+                    children: newImages.asMap().entries.map((e) {
+                      final idx = e.key; final file = e.value;
+                      return Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(File(file.path), width: 80, height: 80, fit: BoxFit.cover),
+                          ),
+                          Positioned(
+                            top: 0, right: 0,
+                            child: GestureDetector(
+                              onTap: () => setState(() => newImages.removeAt(idx)),
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                    color: Colors.black54, shape: BoxShape.circle),
+                                padding: const EdgeInsets.all(4),
+                                child: const Icon(Icons.close, color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ],
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('취소'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('확인'),
-              ),
-            ],
           ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('저장')),
+          ],
+        ),
+      ),
     );
 
     if (confirmed == true) {
-      await FirebaseFirestore.instance
-          .collection('campground_reviews')
-          .doc(contentId)
-          .collection('reviews')
-          .doc(reviewId)
-          .update({
-            'rating': newRating,
-            'content': contentCtrl.text.trim(),
-            'date': FieldValue.serverTimestamp(),
-          });
+      // ✅ 삭제된 기존 URL 계산
+      final removedUrls = oldImageUrls.where((u) => !currentUrls.contains(u)).toList();
+
+      try {
+        // ReviewRepository 또는 CampRepository 둘 중 사용하는 쪽으로 호출
+        await ReviewRepository().updateReview(
+          contentId: contentId,     // _FilteredReviewList의 필드 사용
+          reviewId: reviewId,
+          rating: newRating,
+          content: contentCtrl.text.trim(),
+          newImageFiles: newImages.isNotEmpty ? newImages : null,
+          removeImageUrls: removedUrls.isNotEmpty ? removedUrls : null,
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('리뷰가 수정되었습니다.')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('수정 실패: $e')),
+        );
+      }
     }
   }
 
@@ -1123,14 +1253,13 @@ class _FilteredReviewList extends StatelessWidget {
           ),
     );
 
-    if (confirmed == true) {
-      await FirebaseFirestore.instance
-          .collection('campground_reviews')
-          .doc(contentId)
-          .collection('reviews')
-          .doc(reviewId)
-          .delete();
-    }
+    await ReviewRepository().deleteReview(
+      userReviewId: reviewId,
+      contentId: contentId, // ✅ 꼭 전달
+      content: null,
+      date: null,
+    );
+
   }
 
   Future<void> _showReportDialog(
