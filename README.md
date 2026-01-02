@@ -22,7 +22,12 @@
 
 
 ## 기술 스택
-
+- Dart (Flutter)
+- Python (Selenium)
+- Firebase
+- Node.js (Server)
+- XML
+- HTML
 
 
 
