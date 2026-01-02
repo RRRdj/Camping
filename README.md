@@ -8,5 +8,5 @@
 
 
 
-🔗 [프로젝트 상세 노션]([https://notion.so/...](https://quilled-pasta-368.notion.site/1bfc5b257e92807c924fdb0baf70185d?source=copy_link))
+🔗 [프로젝트 상세 노션]([[https://notion.so/...](https://quilled-pasta-368.notion.site/1bfc5b257e92807c924fdb0baf70185d?source=copy_link)])
 
