@@ -8,8 +8,9 @@
 
 
 
-[![Notion](https://img.shields.io/badge/Notion-View%20Docs-black?logo=notion)](https://quilled-pasta-368.notion.site/1bfc5b257e92807c924fdb0baf70185d?source=copy_link)
+### 링
 
+[![Notion](https://img.shields.io/badge/Notion-View%20Docs-black?logo=notion)](https://quilled-pasta-368.notion.site/1bfc5b257e92807c924fdb0baf70185d?source=copy_link)
 
 
 
@@ -56,6 +57,11 @@
 
 
 
+
+## ERD
+
+
+## 아키텍처
 
 
 
